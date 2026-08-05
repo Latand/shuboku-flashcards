@@ -97,16 +97,41 @@ export function Study({
   onExit: () => void;
   onDone: (r: SessionResult) => void;
 }) {
-  const { cardsById, gradeCard, profile } = useApp();
+  const { cardsById, gradeCard, undoGrade, profile } = useApp();
   const { speak, hasVoice, checked } = useJapaneseVoice();
   const { reverse, autoSound, autoFlip } = profile.settings;
 
   const [queue, setQueue] = useState<string[]>(initialQueue);
   const [open, setOpen] = useState(false);
   const [tally, setTally] = useState({ reviewed: 0, again: 0, retired: 0 });
-  const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
-  const doneRef = useRef(false);
+  const [toast, setToast] = useState<{
+    text: string;
+    key: number;
+    undo?: () => void;
+    leaving?: boolean;
+  } | null>(null);
+  const toastTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const total = initialQueue.length;
+
+  const clearToast = useCallback(() => {
+    toastTimers.current.forEach(clearTimeout);
+    toastTimers.current = [];
+    setToast(null);
+  }, []);
+
+  const showToast = useCallback(
+    (text: string, undo?: () => void) => {
+      clearToast();
+      setToast({ text, key: Date.now(), undo });
+      toastTimers.current = [
+        setTimeout(() => setToast((t) => (t ? { ...t, leaving: true } : t)), 4300),
+        setTimeout(() => setToast(null), 5000),
+      ];
+    },
+    [clearToast]
+  );
+
+  useEffect(() => () => toastTimers.current.forEach(clearTimeout), []);
 
   const current = queue.length ? cardsById[queue[0]] : null;
   const uniqueLeft = useMemo(() => new Set(queue).size, [queue]);
@@ -141,15 +166,30 @@ export function Study({
       if (!current) return;
       if (grade === 6) haptics.impact("heavy");
       else haptics.notify(grade < 3 ? "error" : "success");
+      const cardId = current.id;
       const now = Date.now();
-      const next = gradeCard(current.id, grade, now);
+      const prev = profile.cards[cardId];
+      const next = gradeCard(cardId, grade, now);
+      const undo = () => {
+        haptics.impact("rigid");
+        undoGrade(cardId, prev, now);
+        setTally((t) => ({
+          reviewed: t.reviewed - 1,
+          again: t.again - (grade < 3 ? 1 : 0),
+          retired: t.retired - (grade === 6 ? 1 : 0),
+        }));
+        // The card comes straight back, answer side up, for a fresh grade.
+        setQueue((q) => [cardId, ...q.filter((id) => id !== cardId)]);
+        setOpen(true);
+        clearToast();
+      };
       const text =
         grade === 6
           ? "😎 Retired — it won't come back"
           : grade < 3
             ? "🔁 Again in a few cards"
             : `${GRADES[grade].emoji} Next review ${fmtNextReview(next.timeToReview - now)}`;
-      setToast({ text, key: now });
+      showToast(text, undo);
       setTally((t) => ({
         reviewed: t.reviewed + 1,
         again: t.again + (grade < 3 ? 1 : 0),
@@ -166,17 +206,17 @@ export function Study({
       });
       setOpen(false);
     },
-    [current, gradeCard]
+    [current, gradeCard, undoGrade, profile, showToast, clearToast]
   );
 
+  // The session ends when the queue empties — but while the undo toast is
+  // still up, the summary waits so an accidental last grade can be reverted.
   useEffect(() => {
-    if (total > 0 && queue.length === 0 && !doneRef.current) {
-      doneRef.current = true;
-      // Let the last toast breathe before the summary screen.
-      const t = setTimeout(() => onDone({ total, ...tally }), 600);
-      return () => clearTimeout(t);
-    }
-  }, [queue.length, total, tally, onDone]);
+    if (total === 0 || queue.length > 0) return;
+    const delay = toast?.undo ? (toast.leaving ? 700 : 5200) : 600;
+    const t = setTimeout(() => onDone({ total, ...tally }), delay);
+    return () => clearTimeout(t);
+  }, [queue.length, total, tally, onDone, toast]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -187,13 +227,15 @@ export function Study({
         answer(Number(e.key) as Grade);
       } else if (e.key.toLowerCase() === "s") {
         sayCurrent();
+      } else if (e.key.toLowerCase() === "z" && toast?.undo) {
+        toast.undo();
       } else if (e.key === "Escape") {
         onExit();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, answer, flip, sayCurrent, onExit]);
+  }, [open, answer, flip, sayCurrent, onExit, toast]);
 
   return (
     <div className="sb-root">
@@ -272,14 +314,27 @@ export function Study({
               </>
             )}
 
-            <div className="sb-keys">space reveal · drag &amp; release to grade · 0–6 quick keys · s sound · esc exit</div>
+            <div className="sb-keys">space reveal · drag &amp; release to grade · 0–6 quick keys · z undo · esc exit</div>
+          </div>
+        )}
+
+        {!current && total > 0 && (
+          <div className="sb-study">
+            <p className="sb-hidden" style={{ marginTop: 60 }}>
+              了 · session complete
+            </p>
           </div>
         )}
       </div>
 
       {toast && (
-        <div className="sb-toast" key={toast.key} role="status">
-          {toast.text}
+        <div className="sb-toast" key={toast.key} data-leaving={!!toast.leaving} role="status">
+          <span>{toast.text}</span>
+          {toast.undo && (
+            <button className="sb-btn sb-toast-undo" onClick={toast.undo}>
+              Undo
+            </button>
+          )}
         </div>
       )}
     </div>

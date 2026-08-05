@@ -17,6 +17,7 @@ import {
   normalizeStore,
   parseImport,
   saveStore,
+  todayKey,
   uid,
   STORE_KEY,
   type Profile,
@@ -60,6 +61,8 @@ export interface AppApi {
   /** the bot's "pause block learning": keep the deck, skip its reviews */
   togglePaused: (deckId: string) => void;
   gradeCard: (cardId: string, grade: Grade, now: number) => CardState;
+  /** revert an accidental grade: restore the pre-review state and the day log */
+  undoGrade: (cardId: string, prev: CardState | undefined, gradedAt: number) => void;
   setRetired: (cardId: string, retired: boolean) => void;
 
   createCustomDeck: (name: string) => string;
@@ -340,6 +343,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       return next;
     },
+
+    undoGrade: (cardId, prev, gradedAt) =>
+      patchProfile((p) => {
+        if (prev) p.cards[cardId] = prev;
+        else delete p.cards[cardId];
+        const key = todayKey(gradedAt);
+        const n = (p.reviewLog[key] ?? 0) - 1;
+        if (n > 0) p.reviewLog[key] = n;
+        else delete p.reviewLog[key];
+      }),
 
     setRetired: (cardId, retired) =>
       patchProfile((p) => {
