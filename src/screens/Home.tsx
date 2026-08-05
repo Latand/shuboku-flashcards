@@ -3,6 +3,8 @@ import {
   BarChart3,
   BookOpen,
   Check,
+  ChevronDown,
+  ChevronRight,
   Flame,
   HelpCircle,
   Pause,
@@ -47,6 +49,9 @@ export function Home({ go }: { go: (s: Screen) => void }) {
   // Session deck picker: every active deck is on unless deselected.
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
   const sessionDecks = activeDecks.filter((d) => !deselected.has(d.id));
+
+  // The deck list is management UI — folded away by default.
+  const [collectionOpen, setCollectionOpen] = useState(false);
 
   const toggleSession = (deckId: string) => {
     haptics.selection();
@@ -143,18 +148,38 @@ export function Home({ go }: { go: (s: Screen) => void }) {
           </nav>
         </header>
 
-        {/* ---- my collection ---- */}
+        {/* ---- my collection (folded summary by default) ---- */}
         <section className="sb-sec">
-          <div className="sb-sec-head">
+          <button
+            className="sb-btn sb-sec-head"
+            style={{ width: "100%" }}
+            onClick={() => {
+              haptics.selection();
+              setCollectionOpen((v) => !v);
+            }}
+            aria-expanded={collectionOpen}
+          >
             <span className="sb-num">蔵</span>
             <span className="sb-sec-jp">蔵書</span>
-            <span className="sb-sec-en">My collection</span>
-          </div>
-          <p className="sb-blurb">
-            Decks you are studying. Tap to include or exclude a deck from the next session; the
-            red badge counts cards waiting for review.
-          </p>
-          {collectedDecks.length === 0 ? (
+            <span className="sb-sec-en">
+              {collectionOpen ? (
+                <ChevronDown size={11} style={{ verticalAlign: "-1px", marginRight: 6 }} />
+              ) : (
+                <ChevronRight size={11} style={{ verticalAlign: "-1px", marginRight: 6 }} />
+              )}
+              {collectedDecks.length
+                ? `${collectedDecks.length} decks · ${collectedDecks.reduce(
+                    (a, d) => a + d.cards.length,
+                    0
+                  )} cards · ${totalDue} due`
+                : "My collection"}
+            </span>
+          </button>
+          {!collectionOpen ? (
+            collectedDecks.length === 0 && (
+              <div className="sb-empty">Nothing collected yet — add packs from the catalog below.</div>
+            )
+          ) : collectedDecks.length === 0 ? (
             <div className="sb-empty">
               Nothing collected yet — add packs from the catalog below.
             </div>
