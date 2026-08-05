@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { ArrowLeft, ArchiveRestore, Archive } from "lucide-react";
 import type { Screen } from "../App";
+import type { Card, Deck } from "../data/packs";
 import { gradeBar } from "../lib/insights";
-import { DAY_MS } from "../lib/sm2";
+import { DAY_MS, type CardState } from "../lib/sm2";
+import { haptics } from "../lib/telegram";
 import { useApp } from "../store";
 
 function fmtNext(timeToReview: number, now: number): string {
@@ -23,11 +25,29 @@ function GradeBar({ grade }: { grade: number }) {
   );
 }
 
+/** Lower = worse remembered. Failed cards float to the top, retired sink. */
+function weakness(s: CardState | undefined): number {
+  if (s?.retired) return 1_000_000;
+  if (!s || s.lastGrade === null) return 70_000; // not studied yet
+  return s.lastGrade * 10_000 + s.interval * 10 + s.easinessFactor;
+}
+
 export function Browser({ go }: { go: (s: Screen) => void }) {
-  const { decks, collectedDecks, cardState, setRetired } = useApp();
-  const [deckId, setDeckId] = useState<string>(collectedDecks[0]?.id ?? decks[0]?.id ?? "");
-  const deck = decks.find((d) => d.id === deckId);
+  const { profile, collectedDecks, setRetired } = useApp();
   const now = Date.now();
+
+  const rows = useMemo(() => {
+    const list: { card: Card; deck: Deck; s: CardState | undefined }[] = [];
+    const seen = new Set<string>();
+    for (const deck of collectedDecks) {
+      for (const card of deck.cards) {
+        if (seen.has(card.id)) continue;
+        seen.add(card.id);
+        list.push({ card, deck, s: profile.cards[card.id] });
+      }
+    }
+    return list.sort((a, b) => weakness(a.s) - weakness(b.s));
+  }, [collectedDecks, profile.cards]);
 
   return (
     <div className="sb-root">
@@ -36,43 +56,34 @@ export function Browser({ go }: { go: (s: Screen) => void }) {
           <button className="sb-btn sb-icon" onClick={() => go({ name: "home" })} aria-label="Back">
             <ArrowLeft size={17} />
           </button>
-          <span className="sb-meta">card browser</span>
+          <span className="sb-meta">card browser · {rows.length} cards</span>
         </div>
 
         <section className="sb-sec">
           <div className="sb-sec-head">
             <span className="sb-num">札</span>
             <span className="sb-sec-jp">札入れ</span>
-            <span className="sb-sec-en">Cards & schedule</span>
+            <span className="sb-sec-en">Weakest first</span>
           </div>
+          <p className="sb-blurb">
+            Every card from your collection in one list — the ones you remember worst come
+            first, retired cards sink to the bottom.
+          </p>
 
-          <div className="sb-field">
-            <label htmlFor="deck-pick">Deck</label>
-            <select
-              id="deck-pick"
-              className="sb-select"
-              value={deckId}
-              onChange={(e) => setDeckId(e.target.value)}
-            >
-              {decks.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.jp} — {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {deck && (
+          {rows.length === 0 ? (
+            <div className="sb-empty">Nothing collected yet — add packs from the catalog.</div>
+          ) : (
             <div className="sb-rows">
-              {deck.cards.map((card) => {
-                const s = cardState(card.id);
+              {rows.map(({ card, deck, s }) => {
                 const sub = s
                   ? `${
                       s.retired
                         ? "retired"
-                        : `${s.interval}d interval · ${fmtNext(s.timeToReview, now)}`
-                    } · ${s.totalRepetitions} reps · EF ${s.easinessFactor.toFixed(2)}`
-                  : "never studied";
+                        : s.lastGrade === null
+                          ? "new"
+                          : `${s.interval}d interval · ${fmtNext(s.timeToReview, now)}`
+                    } · ${s.totalRepetitions} reps · EF ${s.easinessFactor.toFixed(2)} · ${deck.jp}`
+                  : `never studied · ${deck.jp}`;
                 return (
                   <div className="sb-row" key={card.id} data-retired={!!s?.retired}>
                     <span className="sb-row-char">{card.char}</span>
@@ -93,7 +104,10 @@ export function Browser({ go }: { go: (s: Screen) => void }) {
                       {s && (
                         <button
                           className="sb-btn sb-pack-side"
-                          onClick={() => setRetired(card.id, !s.retired)}
+                          onClick={() => {
+                            haptics.selection();
+                            setRetired(card.id, !s.retired);
+                          }}
                           title={s.retired ? "Un-retire (due immediately)" : "Retire from rotation"}
                         >
                           {s.retired ? <ArchiveRestore size={12} /> : <Archive size={12} />}
