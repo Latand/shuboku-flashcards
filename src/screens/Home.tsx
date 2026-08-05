@@ -189,6 +189,15 @@ export function Home({ go }: { go: (s: Screen) => void }) {
                         </span>
                       </span>
                     </button>
+                    {!d.builtin && (
+                      <button
+                        className="sb-btn sb-pack-side"
+                        onClick={() => go({ name: "editor", deckId: d.id })}
+                        aria-label={`Edit ${d.jp}`}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    )}
                     <button
                       className="sb-btn sb-pack-side"
                       onClick={() => {
@@ -218,9 +227,12 @@ export function Home({ go }: { go: (s: Screen) => void }) {
           )}
         </section>
 
-        {/* ---- catalog ---- */}
+        {/* ---- catalog (only decks not yet collected — the rest live above) ---- */}
         {SCRIPTS.map((s) => {
-          const packs = decks.filter((p) => p.builtin && p.script === s.id);
+          const packs = decks.filter(
+            (p) => p.builtin && p.script === s.id && !collected.has(p.id)
+          );
+          if (packs.length === 0) return null;
           return (
             <section className="sb-sec" key={s.id}>
               <div className="sb-sec-head">
@@ -272,7 +284,9 @@ export function Home({ go }: { go: (s: Screen) => void }) {
           </div>
           <p className="sb-blurb">Cards you wrote yourself. They study exactly like the packs.</p>
           <div className="sb-packs">
-            {customDecks.map((d) => {
+            {customDecks
+              .filter((d) => !collected.has(d.id))
+              .map((d) => {
               const inCollection = collected.has(d.id);
               return (
                 <div key={d.id} style={{ display: "flex", gap: 8 }}>

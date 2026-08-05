@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { DAY_MS } from "./sm2";
 import { todayKey } from "./storage";
-import { aggregates, computeStreak, fmtNextReview, gradeBar, rankAmong } from "./insights";
+import {
+  aggregates,
+  compareWeakness,
+  computeStreak,
+  fmtNextReview,
+  gradeBar,
+  rankAmong,
+} from "./insights";
 import { newCardState, review } from "./sm2";
 
 const NOW = new Date(2026, 7, 5, 12).getTime(); // local noon
@@ -61,6 +68,22 @@ describe("aggregates", () => {
     expect(agg.active).toBe(2);
     expect(agg.inactive).toBe(2);
     expect(agg.totalReps).toBe(4);
+  });
+});
+
+describe("weakest-first ordering", () => {
+  test("lower grade first; same grade → more repetitions first; retired last", () => {
+    const base = newCardState(NOW);
+    const mk = (over: Partial<typeof base>) => ({ ...base, ...over });
+    const failed = mk({ lastGrade: 1, totalRepetitions: 2 });
+    const grinder = mk({ lastGrade: 3, totalRepetitions: 9 });
+    const shaky = mk({ lastGrade: 3, totalRepetitions: 3 });
+    const solid = mk({ lastGrade: 5, totalRepetitions: 4 });
+    const fresh = mk({ lastGrade: null });
+    const done = mk({ lastGrade: 6, retired: true });
+
+    const sorted = [done, solid, fresh, shaky, grinder, failed].sort(compareWeakness);
+    expect(sorted).toEqual([failed, grinder, shaky, solid, fresh, done]);
   });
 });
 

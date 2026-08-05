@@ -67,19 +67,25 @@ export function initTelegram(): void {
   }
 
   // Clients older than Bot API 7.7 ignore disableVerticalSwipes and collapse
-  // the webview on a pull-down. Fallback: scrolling moves from <body> into
-  // #root (see html.tg-app rules), and #root is pinned ≥1px from the top, so
-  // a downward swipe is an inner scroll instead of a close gesture.
-  document.documentElement.classList.add("tg-app");
-  const root = document.getElementById("root");
-  if (root) {
-    const pin = () => {
-      if (root.scrollTop === 0) root.scrollTop = 1;
-      else if (root.scrollTop + root.clientHeight >= root.scrollHeight) root.scrollTop -= 1;
-    };
-    pin();
-    root.addEventListener("touchstart", pin, { passive: true });
-  }
+  // the webview when the page is pulled down from the very top. Block only
+  // that exact gesture (downward drag while the window sits at scroll 0);
+  // every other touch keeps native scrolling.
+  let startY = 0;
+  document.addEventListener(
+    "touchstart",
+    (e) => {
+      startY = e.touches[0]?.clientY ?? 0;
+    },
+    { passive: true }
+  );
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      const dy = (e.touches[0]?.clientY ?? 0) - startY;
+      if (dy > 5 && window.scrollY <= 0 && e.cancelable) e.preventDefault();
+    },
+    { passive: false }
+  );
 }
 
 export function telegramUserName(): string | null {

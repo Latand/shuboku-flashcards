@@ -106,6 +106,21 @@ export function rankAmong(value: number, all: number[]): number {
   return 1 + all.filter((v) => v > value).length;
 }
 
+/**
+ * Weakest-first ordering: studied cards before new ones, retired last.
+ * Among studied cards a worse last grade wins; on equal grades the card
+ * you had to repeat more times is the one you truly know worse.
+ */
+export function compareWeakness(a: CardState | undefined, b: CardState | undefined): number {
+  const band = (s?: CardState) => (s?.retired ? 2 : !s || s.lastGrade === null ? 1 : 0);
+  if (band(a) !== band(b)) return band(a) - band(b);
+  if (!a || !b || band(a) !== 0) return 0;
+  if (a.lastGrade !== b.lastGrade) return a.lastGrade! - b.lastGrade!;
+  if (a.totalRepetitions !== b.totalRepetitions) return b.totalRepetitions - a.totalRepetitions;
+  if (a.easinessFactor !== b.easinessFactor) return a.easinessFactor - b.easinessFactor;
+  return a.interval - b.interval;
+}
+
 /* ---- last-grade progress bar (ported from the bot's statistics handler) ---- */
 
 export function gradeBar(grade: number): { filled: number; tone: "bad" | "middle" | "good" } {

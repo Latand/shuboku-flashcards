@@ -16,23 +16,7 @@
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; padding: 0; }
-
-/* Inside Telegram: #root becomes the scroll container so pull-down can't
-   collapse the webview (html.tg-app is set by initTelegram). */
-html.tg-app, html.tg-app body {
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-html.tg-app #root {
-  height: 100%;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
-/* keep #root scrollable by a hair even when a screen fits the viewport,
-   so the 1px scroll pin always has room to work */
-html.tg-app #root::after { content: ""; display: block; height: 2px; }
+html, body { overscroll-behavior-y: none; }
 
 .sb-root {
   position: relative;

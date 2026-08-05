@@ -44,6 +44,8 @@ export interface AppApi {
   deckById: Record<string, Deck>;
   dueCount: (deckId: string, now: number) => number;
   cardState: (cardId: string) => CardState | undefined;
+  /** shuffled due cards from all active decks, capped by the session limit */
+  buildSessionQueue: () => string[];
 
   addToCollection: (deckId: string) => void;
   removeFromCollection: (deckId: string) => void;
@@ -231,6 +233,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
 
     cardState: (cardId) => profile.cards[cardId],
+
+    buildSessionQueue: () => {
+      const now = Date.now();
+      const seen = new Set<string>();
+      const due: string[] = [];
+      for (const deck of activeDecks) {
+        for (const c of deck.cards) {
+          if (!seen.has(c.id) && isDue(profile.cards[c.id], now)) {
+            seen.add(c.id);
+            due.push(c.id);
+          }
+        }
+      }
+      for (let i = due.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [due[i], due[j]] = [due[j], due[i]];
+      }
+      const { limit } = profile.settings;
+      return due.slice(0, limit === 0 ? due.length : limit);
+    },
 
     addToCollection: (deckId) =>
       patchProfile((p) => {

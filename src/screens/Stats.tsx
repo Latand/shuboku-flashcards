@@ -1,12 +1,12 @@
 import { ArrowLeft, Flame } from "lucide-react";
 import type { Screen } from "../App";
-import { aggregates, computeStreak, rankAmong } from "../lib/insights";
+import { aggregates, compareWeakness, computeStreak, rankAmong } from "../lib/insights";
 import { DAY_MS, isDue } from "../lib/sm2";
 import { todayKey } from "../lib/storage";
 import { useApp } from "../store";
 
 export function Stats({ go }: { go: (s: Screen) => void }) {
-  const { store, profile, activeDecks } = useApp();
+  const { store, profile, activeDecks, cardsById } = useApp();
   const now = Date.now();
 
   const activeCardIds = new Set(activeDecks.flatMap((d) => d.cards.map((c) => c.id)));
@@ -27,9 +27,17 @@ export function Stats({ go }: { go: (s: Screen) => void }) {
   const learnedRank = rankAmong(agg.learned, learnedByProfile.filter((_, i) => profiles[i].id !== profile.id));
   const repsRank = rankAmong(agg.totalReps, repsByProfile.filter((_, i) => profiles[i].id !== profile.id));
 
-  // Reviews per day, last 14 days.
+  // The cards that resist you the most right now.
+  const hardest = Object.entries(profile.cards)
+    .filter(([id, s]) => activeCardIds.has(id) && !s.retired && s.lastGrade !== null)
+    .sort(([, a], [, b]) => compareWeakness(a, b))
+    .slice(0, 5)
+    .map(([id, s]) => ({ card: cardsById[id], s }))
+    .filter((x) => !!x.card);
+
+  // Reviews per day, last 7 days.
   const days: { label: string; count: number }[] = [];
-  for (let i = 13; i >= 0; i--) {
+  for (let i = 6; i >= 0; i--) {
     const t = now - i * DAY_MS;
     const key = todayKey(t);
     days.push({ label: key.slice(5), count: profile.reviewLog[key] ?? 0 });
@@ -116,24 +124,35 @@ export function Stats({ go }: { go: (s: Screen) => void }) {
           A card counts as learned once you have remembered it twice in a row.
         </p>
 
-        <section className="sb-sec">
-          <div className="sb-sec-head">
-            <span className="sb-num">日</span>
-            <span className="sb-sec-jp">日々の復習</span>
-            <span className="sb-sec-en">Reviews per day</span>
-          </div>
-          <div style={{ marginTop: 14 }}>
-            {days.map((d) => (
-              <div className="sb-barrow" key={d.label}>
-                <span className="sb-barrow-l">{d.label}</span>
-                <span className="sb-barrow-track">
-                  <i style={{ width: Math.round((d.count / maxDay) * 100) + "%" }} />
-                </span>
-                <span className="sb-barrow-n">{d.count}</span>
-              </div>
-            ))}
-          </div>
-        </section>
+        {hardest.length > 0 && (
+          <section className="sb-sec">
+            <div className="sb-sec-head">
+              <span className="sb-num">難</span>
+              <span className="sb-sec-jp">難物</span>
+              <span className="sb-sec-en">Hardest cards</span>
+            </div>
+            <div className="sb-rows">
+              {hardest.map(({ card, s }) => (
+                <div className="sb-row" key={card.id}>
+                  <span className="sb-row-char">{card.char}</span>
+                  <span className="sb-row-main">
+                    <span>
+                      {card.type === "kana"
+                        ? card.romaji
+                        : card.type === "kanji"
+                          ? card.meaning
+                          : card.back}
+                    </span>
+                    <span className="sb-row-sub" style={{ display: "block" }}>
+                      {s.totalRepetitions} reps · last grade {s.lastGrade} · EF{" "}
+                      {s.easinessFactor.toFixed(2)}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="sb-sec">
           <div className="sb-sec-head">
@@ -148,6 +167,25 @@ export function Stats({ go }: { go: (s: Screen) => void }) {
                 <span className="sb-barrow-l">{d.label}</span>
                 <span className="sb-barrow-track">
                   <i style={{ width: Math.round((d.count / maxForecast) * 100) + "%" }} />
+                </span>
+                <span className="sb-barrow-n">{d.count}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="sb-sec">
+          <div className="sb-sec-head">
+            <span className="sb-num">日</span>
+            <span className="sb-sec-jp">日々の復習</span>
+            <span className="sb-sec-en">Reviews per day</span>
+          </div>
+          <div style={{ marginTop: 14 }}>
+            {days.map((d) => (
+              <div className="sb-barrow" key={d.label}>
+                <span className="sb-barrow-l">{d.label}</span>
+                <span className="sb-barrow-track">
+                  <i style={{ width: Math.round((d.count / maxDay) * 100) + "%" }} />
                 </span>
                 <span className="sb-barrow-n">{d.count}</span>
               </div>

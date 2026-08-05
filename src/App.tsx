@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Repeat } from "lucide-react";
 import { haptics, setTelegramBack } from "./lib/telegram";
-import { AppProvider } from "./store";
+import { AppProvider, useApp } from "./store";
 import { Home } from "./screens/Home";
 import { Study, type SessionResult } from "./screens/Study";
 import { Browser } from "./screens/Browser";
@@ -67,7 +67,19 @@ function Done({ result, go }: { result: SessionResult; go: (s: Screen) => void }
 }
 
 function Router() {
+  const app = useApp();
   const [screen, setScreen] = useState<Screen>({ name: "home" });
+  const booted = useRef(false);
+
+  // Opening the app lands straight in a review when cards are waiting —
+  // the menu is for browsing, not the default.
+  useEffect(() => {
+    if (booted.current) return;
+    booted.current = true;
+    const queue = app.buildSessionQueue();
+    if (queue.length) setScreen({ name: "study", queue });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Telegram's native back button leads home from any sub-screen.
   useEffect(() => {

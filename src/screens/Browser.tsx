@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { ArrowLeft, ArchiveRestore, Archive } from "lucide-react";
 import type { Screen } from "../App";
 import type { Card, Deck } from "../data/packs";
-import { gradeBar } from "../lib/insights";
+import { compareWeakness, gradeBar } from "../lib/insights";
 import { DAY_MS, type CardState } from "../lib/sm2";
 import { haptics } from "../lib/telegram";
 import { useApp } from "../store";
@@ -25,13 +25,6 @@ function GradeBar({ grade }: { grade: number }) {
   );
 }
 
-/** Lower = worse remembered. Failed cards float to the top, retired sink. */
-function weakness(s: CardState | undefined): number {
-  if (s?.retired) return 1_000_000;
-  if (!s || s.lastGrade === null) return 70_000; // not studied yet
-  return s.lastGrade * 10_000 + s.interval * 10 + s.easinessFactor;
-}
-
 export function Browser({ go }: { go: (s: Screen) => void }) {
   const { profile, collectedDecks, setRetired } = useApp();
   const now = Date.now();
@@ -46,7 +39,7 @@ export function Browser({ go }: { go: (s: Screen) => void }) {
         list.push({ card, deck, s: profile.cards[card.id] });
       }
     }
-    return list.sort((a, b) => weakness(a.s) - weakness(b.s));
+    return list.sort((a, b) => compareWeakness(a.s, b.s));
   }, [collectedDecks, profile.cards]);
 
   return (
