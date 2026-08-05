@@ -406,10 +406,21 @@ html, body { overscroll-behavior-y: none; }
   transform: translate(-50%, 0); white-space: nowrap;
   display: flex; align-items: center; gap: 14px;
   background: #171114; border: 1px solid var(--edge); border-left: 2px solid var(--blood);
-  padding: 10px 12px 10px 18px; font-family: var(--mono); font-size: 11px;
+  padding: 10px 12px 12px 18px; font-family: var(--mono); font-size: 11px;
   letter-spacing: .1em; color: var(--bone);
   animation: sb-toast-in .25s ease;
   transition: opacity .7s ease;
+  overflow: hidden;
+}
+/* countdown: the ember line drains left-to-right until the toast fades */
+.sb-toast-timer {
+  position: absolute; left: 0; bottom: 0; height: 2px;
+  background: var(--ember); width: 100%; transform-origin: left;
+  animation: sb-toast-timer 5s linear forwards;
+}
+@keyframes sb-toast-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
 }
 .sb-toast[data-leaving="true"] { opacity: 0; }
 @keyframes sb-toast-in {
@@ -430,6 +441,22 @@ html, body { overscroll-behavior-y: none; }
 .sb-gradebar[data-tone="bad"] i[data-on="true"] { background: var(--ember); }
 .sb-gradebar[data-tone="middle"] i[data-on="true"] { background: #c8a94e; }
 .sb-gradebar[data-tone="good"] i[data-on="true"] { background: #6fae7f; }
+
+/* --- knowledge composition (stats) --- */
+.sb-comp-head { display: flex; align-items: baseline; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
+.sb-comp-pct { font-family: var(--mono); font-size: 44px; line-height: 1; }
+.sb-comp-sub { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); }
+.sb-compbar {
+  display: flex; height: 14px; margin-top: 14px;
+  background: #1c1719; border: 1px solid var(--edge); overflow: hidden;
+}
+.sb-compbar i { display: block; height: 100%; }
+.sb-legend {
+  display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ash);
+}
+.sb-dot { width: 8px; height: 8px; display: inline-block; margin-right: 7px; }
 
 .sb-next-hint {
   text-align: center; margin: 10px 0 0;

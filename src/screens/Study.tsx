@@ -335,6 +335,7 @@ export function Study({
               Undo
             </button>
           )}
+          <i className="sb-toast-timer" aria-hidden="true" />
         </div>
       )}
     </div>
