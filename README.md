@@ -70,6 +70,27 @@ the session-length setting.
 Progress from the original Leitner-box artifact (`shuboku:v1:progress`) is
 migrated automatically on first load.
 
+## Telegram Mini App
+
+The app is Telegram-aware. Opened inside Telegram (attach the URL to a bot via
+BotFather → Bot Settings → Menu Button or `/newapp`), it additionally gets:
+
+- **Cloud sync** — the whole store is mirrored to Telegram CloudStorage
+  (chunked under the 4 KB per-key limit), so progress follows your Telegram
+  account across devices; the newer copy wins.
+- **Haptics everywhere** — a tick as the grading slider crosses each stop,
+  soft/rigid taps for collecting and removing decks, success/error buzzes for
+  grades, a heavy thump for retiring a card. Regular Android browsers get a
+  `navigator.vibrate` fallback.
+- **Native chrome** — matching header/background colors, the system Back
+  button on sub-screens, expand-on-open, vertical-swipe close disabled so it
+  doesn't fight the slider, and a closing confirmation while a review session
+  is in progress.
+- The default profile is named after your Telegram account on first run.
+
+In a plain browser all of this silently switches off and `localStorage` is
+the single source of truth.
+
 ## Development
 
 Uses [bun](https://bun.sh):

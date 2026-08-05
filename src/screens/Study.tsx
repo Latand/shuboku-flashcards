@@ -4,6 +4,7 @@ import type { Card } from "../data/packs";
 import { fmtNextReview } from "../lib/insights";
 import { GRADES, type Grade } from "../lib/sm2";
 import { useJapaneseVoice } from "../lib/speech";
+import { haptics, setClosingConfirmation } from "../lib/telegram";
 import { useApp } from "../store";
 import { GradeSlider } from "./GradeSlider";
 
@@ -117,9 +118,16 @@ export function Study({
 
   const flip = useCallback(() => {
     if (open || !current) return;
+    haptics.impact("light");
     setOpen(true);
     if (autoSound) setTimeout(() => speak(current.speak), 130);
   }, [open, current, autoSound, speak]);
+
+  // Inside Telegram, guard an in-progress session against accidental closing.
+  useEffect(() => {
+    setClosingConfirmation(true);
+    return () => setClosingConfirmation(false);
+  }, []);
 
   // The bot's instruction: don't sit on one card — flip it automatically.
   useEffect(() => {
@@ -131,6 +139,8 @@ export function Study({
   const answer = useCallback(
     (grade: Grade) => {
       if (!current) return;
+      if (grade === 6) haptics.impact("heavy");
+      else haptics.notify(grade < 3 ? "error" : "success");
       const now = Date.now();
       const next = gradeCard(current.id, grade, now);
       const text =

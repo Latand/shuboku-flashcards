@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Check, Download, Plus, Trash2, Upload, UserRound } from "lucide-react";
 import type { Screen } from "../App";
+import { haptics } from "../lib/telegram";
 import { useApp } from "../store";
 
 export function Settings({ go }: { go: (s: Screen) => void }) {
@@ -62,7 +63,10 @@ export function Settings({ go }: { go: (s: Screen) => void }) {
                   <button
                     className="sb-btn sb-pack"
                     data-on={active}
-                    onClick={() => app.switchProfile(p.id)}
+                    onClick={() => {
+                      haptics.selection();
+                      app.switchProfile(p.id);
+                    }}
                     style={{ flex: 1 }}
                   >
                     <span className="sb-mark">

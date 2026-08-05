@@ -14,13 +14,22 @@ import {
   loadStore,
   logReview,
   newProfile,
+  normalizeStore,
   parseImport,
   saveStore,
   uid,
+  STORE_KEY,
   type Profile,
   type Settings,
   type Store,
 } from "./lib/storage";
+import {
+  cloudLoad,
+  cloudSaveDebounced,
+  initTelegram,
+  isTelegram,
+  telegramUserName,
+} from "./lib/telegram";
 
 export interface AppApi {
   store: Store;
@@ -97,11 +106,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveStore(store), 250);
+    saveTimer.current = setTimeout(() => {
+      const json = saveStore(store);
+      cloudSaveDebounced(json); // Telegram CloudStorage sync, no-op elsewhere
+    }, 250);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
   }, [store]);
+
+  // Telegram boot: expand, theme, then adopt the cloud copy if it's newer
+  // than what this device has (cross-device sync via CloudStorage).
+  useEffect(() => {
+    initTelegram();
+    if (!isTelegram) return;
+    void (async () => {
+      try {
+        const json = await cloudLoad();
+        if (!json) return;
+        const parsed = JSON.parse(json) as Store;
+        if (!(parsed?.version === 2 && parsed.profiles?.[parsed.activeProfileId])) return;
+        const localRaw = localStorage.getItem(STORE_KEY);
+        const localSavedAt: number = localRaw ? (JSON.parse(localRaw).savedAt ?? 0) : 0;
+        if ((parsed.savedAt ?? 0) > localSavedAt) {
+          setStore(normalizeStore(parsed));
+        }
+      } catch {
+        /* cloud unreachable — local copy rules */
+      }
+    })();
+    // Name the untouched default profile after the Telegram account.
+    const name = telegramUserName();
+    if (name) {
+      setStore((prev) => {
+        const p = prev.profiles[prev.activeProfileId];
+        if (
+          Object.keys(prev.profiles).length === 1 &&
+          p.name === "Default" &&
+          Object.keys(p.cards).length === 0
+        ) {
+          return { ...prev, profiles: { [p.id]: { ...p, name } } };
+        }
+        return prev;
+      });
+    }
+  }, []);
 
   const profile = store.profiles[store.activeProfileId];
 
@@ -337,7 +386,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     importJson: (json) => {
       const parsed = parseImport(json);
       setStore(parsed);
-      saveStore(parsed);
+      cloudSaveDebounced(saveStore(parsed));
     },
 
     resetProfileProgress: () =>

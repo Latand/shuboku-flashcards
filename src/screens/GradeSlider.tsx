@@ -1,5 +1,6 @@
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { GRADES, type Grade } from "../lib/sm2";
+import { haptics } from "../lib/telegram";
 
 const THUMB = 44; // px, also the track padding for the thumb travel
 
@@ -25,6 +26,15 @@ export function GradeSlider({ onCommit }: { onCommit: (g: Grade) => void }) {
   const [pos, setPos] = useState(0.5); // 0..1 → grade 3 by default
   const [dragging, setDragging] = useState(false);
   const grade = Math.round(pos * 6) as Grade;
+
+  // A tiny tick every time the thumb crosses onto another grade stop.
+  const lastGrade = useRef(grade);
+  useEffect(() => {
+    if (grade !== lastGrade.current) {
+      lastGrade.current = grade;
+      haptics.selection();
+    }
+  }, [grade]);
 
   const posFromX = (clientX: number) => {
     const r = trackRef.current!.getBoundingClientRect();

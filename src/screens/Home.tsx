@@ -16,6 +16,7 @@ import type { Screen } from "../App";
 import { SCRIPTS } from "../data/packs";
 import { computeStreak } from "../lib/insights";
 import { isDue } from "../lib/sm2";
+import { haptics } from "../lib/telegram";
 import { useApp } from "../store";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -47,12 +48,24 @@ export function Home({ go }: { go: (s: Screen) => void }) {
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
   const sessionDecks = activeDecks.filter((d) => !deselected.has(d.id));
 
-  const toggleSession = (deckId: string) =>
+  const toggleSession = (deckId: string) => {
+    haptics.selection();
     setDeselected((prev) => {
       const n = new Set(prev);
       n.has(deckId) ? n.delete(deckId) : n.add(deckId);
       return n;
     });
+  };
+
+  const toggleCollected = (deckId: string, inCollection: boolean) => {
+    if (inCollection) {
+      haptics.impact("rigid");
+      removeFromCollection(deckId);
+    } else {
+      haptics.impact("soft");
+      addToCollection(deckId);
+    }
+  };
 
   const dueByDeck = useMemo(() => {
     const m: Record<string, number> = {};
@@ -77,7 +90,10 @@ export function Home({ go }: { go: (s: Screen) => void }) {
     }
     // The bot pulled due cards in random order; the session cap comes on top.
     const queue = shuffle(due).slice(0, settings.limit === 0 ? due.length : settings.limit);
-    if (queue.length) go({ name: "study", queue });
+    if (queue.length) {
+      haptics.impact("medium");
+      go({ name: "study", queue });
+    }
   };
 
   const customDecks = decks.filter((d) => !d.builtin);
@@ -175,7 +191,10 @@ export function Home({ go }: { go: (s: Screen) => void }) {
                     </button>
                     <button
                       className="sb-btn sb-pack-side"
-                      onClick={() => togglePaused(d.id)}
+                      onClick={() => {
+                        haptics.selection();
+                        togglePaused(d.id);
+                      }}
                       aria-label={paused ? `Resume ${d.name}` : `Pause ${d.name}`}
                       title={paused ? "Resume learning this deck" : "Pause learning (deck stays, reviews stop)"}
                     >
@@ -183,7 +202,10 @@ export function Home({ go }: { go: (s: Screen) => void }) {
                     </button>
                     <button
                       className="sb-btn sb-pack-side"
-                      onClick={() => removeFromCollection(d.id)}
+                      onClick={() => {
+                        haptics.impact("rigid");
+                        removeFromCollection(d.id);
+                      }}
                       aria-label={`Remove ${d.name} from collection`}
                       title="Remove from collection (history is kept)"
                     >
@@ -215,9 +237,7 @@ export function Home({ go }: { go: (s: Screen) => void }) {
                       key={p.id}
                       className="sb-btn sb-pack"
                       data-on={inCollection}
-                      onClick={() =>
-                        inCollection ? removeFromCollection(p.id) : addToCollection(p.id)
-                      }
+                      onClick={() => toggleCollected(p.id, inCollection)}
                       aria-pressed={inCollection}
                     >
                       <span className="sb-mark">
@@ -259,9 +279,7 @@ export function Home({ go }: { go: (s: Screen) => void }) {
                   <button
                     className="sb-btn sb-pack"
                     data-on={inCollection}
-                    onClick={() =>
-                      inCollection ? removeFromCollection(d.id) : addToCollection(d.id)
-                    }
+                    onClick={() => toggleCollected(d.id, inCollection)}
                     aria-pressed={inCollection}
                     style={{ flex: 1 }}
                   >

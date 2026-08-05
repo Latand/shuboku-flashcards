@@ -41,6 +41,8 @@ export interface Store {
   version: 2;
   activeProfileId: string;
   profiles: Record<string, Profile>;
+  /** epoch ms of the last save — used to pick the newer copy between devices */
+  savedAt?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -164,12 +166,14 @@ export function loadStore(now: number): Store {
   return store;
 }
 
-export function saveStore(store: Store): void {
+export function saveStore(store: Store): string {
+  const json = JSON.stringify({ ...store, savedAt: Date.now() });
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(store));
+    localStorage.setItem(STORE_KEY, json);
   } catch {
     /* storage full or unavailable — the session still works in memory */
   }
+  return json;
 }
 
 /* ---- export / import ---- */

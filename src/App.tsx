@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Repeat } from "lucide-react";
+import { haptics, setTelegramBack } from "./lib/telegram";
 import { AppProvider } from "./store";
 import { Home } from "./screens/Home";
 import { Study, type SessionResult } from "./screens/Study";
@@ -20,6 +21,9 @@ export type Screen =
   | { name: "guide" };
 
 function Done({ result, go }: { result: SessionResult; go: (s: Screen) => void }) {
+  useEffect(() => {
+    haptics.notify("success");
+  }, []);
   return (
     <div className="sb-root">
       <div className="sb-wrap">
@@ -64,6 +68,11 @@ function Done({ result, go }: { result: SessionResult; go: (s: Screen) => void }
 
 function Router() {
   const [screen, setScreen] = useState<Screen>({ name: "home" });
+
+  // Telegram's native back button leads home from any sub-screen.
+  useEffect(() => {
+    setTelegramBack(screen.name !== "home", () => setScreen({ name: "home" }));
+  }, [screen.name]);
 
   switch (screen.name) {
     case "home":
