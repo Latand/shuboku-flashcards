@@ -1,5 +1,5 @@
 import type { Card } from "../data/packs";
-import { BUILTIN_DECKS } from "../data/packs";
+import { BUILTIN_BY_ID, BUILTIN_DECKS } from "../data/packs";
 import { DAY_MS, newCardState, type CardState, type Grade } from "./sm2";
 
 export const STORE_KEY = "shuboku:v2";
@@ -126,13 +126,27 @@ export function migrateLegacyProgress(
 
 /** Fill in fields added after the first v2 release (paused decks, new settings). */
 export function normalizeStore(store: Store): Store {
+  const now = Date.now();
   for (const id of Object.keys(store.profiles)) {
-    const p = store.profiles[id];
-    store.profiles[id] = {
-      ...p,
-      paused: p.paused ?? [],
-      settings: { ...DEFAULT_SETTINGS, ...p.settings },
+    const p: Profile = {
+      ...store.profiles[id],
+      paused: store.profiles[id].paused ?? [],
+      settings: { ...DEFAULT_SETTINGS, ...store.profiles[id].settings },
     };
+    // Invariant: every card of a collected deck has repetition state,
+    // otherwise it could never become due.
+    for (const deckId of p.collection) {
+      const cardIds =
+        deckId in BUILTIN_BY_ID
+          ? BUILTIN_BY_ID[deckId].cards.map((c) => c.id)
+          : (p.customDecks[deckId]?.cardIds ?? []);
+      for (const cardId of cardIds) {
+        if (!p.cards[cardId]) {
+          p.cards = { ...p.cards, [cardId]: newCardState(now) };
+        }
+      }
+    }
+    store.profiles[id] = p;
   }
   return store;
 }

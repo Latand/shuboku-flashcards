@@ -41,6 +41,9 @@ export function Home({ go }: { go: (s: Screen) => void }) {
     removeFromCollection,
     togglePaused,
     setSettings,
+    collectAndBuildQueue,
+    nextDeckToLearn,
+    dueTomorrow,
   } = app;
   const settings = profile.settings;
   const now = Date.now();
@@ -105,6 +108,16 @@ export function Home({ go }: { go: (s: Screen) => void }) {
   const collected = new Set(profile.collection);
   const trackedCount = Object.keys(profile.cards).length;
 
+  const nextDeck = nextDeckToLearn();
+  const tomorrow = dueTomorrow();
+  const firstRun = collectedDecks.length === 0;
+
+  const learnDeck = (deckId: string) => {
+    haptics.impact("medium");
+    const queue = collectAndBuildQueue(deckId);
+    if (queue.length) go({ name: "study", queue });
+  };
+
   return (
     <div className="sb-root">
       <div className="sb-wrap">
@@ -148,7 +161,31 @@ export function Home({ go }: { go: (s: Screen) => void }) {
           </nav>
         </header>
 
+        {/* ---- first run: one obvious way in ---- */}
+        {firstRun && nextDeck && (
+          <section className="sb-sec" style={{ textAlign: "center" }}>
+            <p className="sb-blurb" style={{ fontSize: 14 }}>
+              Five minutes a day is enough. Start with the first hiragana pack — the app
+              schedules every card for you and tells you when to come back.
+            </p>
+            <button className="sb-btn sb-start" onClick={() => learnDeck(nextDeck.id)}>
+              <Play size={14} strokeWidth={2} />
+              Start · {nextDeck.jp} · {nextDeck.cards.length} cards
+            </button>
+            <div className="sb-actions" style={{ justifyContent: "center" }}>
+              <button
+                className="sb-btn sb-act"
+                data-ghost="true"
+                onClick={() => go({ name: "guide" })}
+              >
+                How it works
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* ---- my collection (folded summary by default) ---- */}
+        {!firstRun && (
         <section className="sb-sec">
           <button
             className="sb-btn sb-sec-head"
@@ -251,6 +288,7 @@ export function Home({ go }: { go: (s: Screen) => void }) {
             </div>
           )}
         </section>
+        )}
 
         {/* ---- catalog (only decks not yet collected — the rest live above) ---- */}
         {SCRIPTS.map((s) => {
@@ -457,18 +495,30 @@ export function Home({ go }: { go: (s: Screen) => void }) {
           </div>
         </div>
 
-        <div className="sb-start-row">
-          <button className="sb-btn sb-start" onClick={begin} disabled={sessionDue === 0}>
-            <Play size={14} strokeWidth={2} />
-            {collectedDecks.length === 0
-              ? "Collect a deck first"
-              : sessionDue === 0
-                ? "Nothing due — come back later"
-                : `Review · ${
-                    settings.limit === 0 || settings.limit > sessionDue ? sessionDue : settings.limit
-                  } cards`}
-          </button>
-        </div>
+        {!firstRun && (
+          <div className="sb-start-row">
+            {sessionDue > 0 ? (
+              <button className="sb-btn sb-start" onClick={begin}>
+                <Play size={14} strokeWidth={2} />
+                Review ·{" "}
+                {settings.limit === 0 || settings.limit > sessionDue ? sessionDue : settings.limit}{" "}
+                cards
+              </button>
+            ) : nextDeck ? (
+              <button className="sb-btn sb-start" onClick={() => learnDeck(nextDeck.id)}>
+                <Plus size={14} strokeWidth={2} />
+                Learn next · {nextDeck.jp} · {nextDeck.cards.length} cards
+              </button>
+            ) : (
+              <button className="sb-btn sb-start" disabled>
+                All caught up
+              </button>
+            )}
+            {sessionDue === 0 && tomorrow > 0 && (
+              <p className="sb-next-hint">next reviews tomorrow · {tomorrow} cards</p>
+            )}
+          </div>
+        )}
 
         <div className="sb-foot">
           <span className="sb-count-n" style={{ color: "#554d52" }}>

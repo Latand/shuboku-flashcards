@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Repeat } from "lucide-react";
+import { ArrowLeft, Flame, Play, Plus } from "lucide-react";
+import { computeStreak } from "./lib/insights";
 import { haptics, setTelegramBack } from "./lib/telegram";
 import { AppProvider, useApp } from "./store";
 import { Home } from "./screens/Home";
@@ -21,9 +22,28 @@ export type Screen =
   | { name: "guide" };
 
 function Done({ result, go }: { result: SessionResult; go: (s: Screen) => void }) {
+  const app = useApp();
   useEffect(() => {
     haptics.notify("success");
   }, []);
+
+  const dueLeft = app.dueNow();
+  const tomorrow = app.dueTomorrow();
+  const nextDeck = app.nextDeckToLearn();
+  const streak = computeStreak(app.profile.reviewLog, Date.now());
+
+  const continueReview = () => {
+    haptics.impact("medium");
+    const queue = app.buildSessionQueue();
+    if (queue.length) go({ name: "study", queue });
+  };
+  const learnNext = () => {
+    if (!nextDeck) return;
+    haptics.impact("medium");
+    const queue = app.collectAndBuildQueue(nextDeck.id);
+    if (queue.length) go({ name: "study", queue });
+  };
+
   return (
     <div className="sb-root">
       <div className="sb-wrap">
@@ -31,6 +51,13 @@ function Done({ result, go }: { result: SessionResult; go: (s: Screen) => void }
           <div className="sb-seal" style={{ marginBottom: 26 }}>了</div>
           <h2 className="sb-title" style={{ fontSize: "clamp(30px,8vw,46px)" }}>完</h2>
           <p className="sb-latin" style={{ marginTop: 10 }}>Session complete</p>
+          {streak.current > 0 && (
+            <p className="sb-next-hint" style={{ marginTop: 0 }}>
+              <Flame size={11} className="sb-flame" style={{ verticalAlign: "-1px" }} />{" "}
+              {streak.current}-day streak
+              {streak.current >= streak.best && streak.best > 1 ? " · personal best" : ""}
+            </p>
+          )}
 
           <div className="sb-stats" style={{ width: "100%", maxWidth: 460 }}>
             <div className="sb-stat">
@@ -48,16 +75,27 @@ function Done({ result, go }: { result: SessionResult; go: (s: Screen) => void }
           </div>
 
           <div style={{ display: "grid", gap: 10, width: "100%", maxWidth: 460 }}>
-            <button className="sb-btn sb-reveal" onClick={() => go({ name: "home" })}>
-              <Repeat size={14} /> Back to the shelf
-            </button>
+            {dueLeft > 0 ? (
+              <button className="sb-btn sb-reveal" onClick={continueReview}>
+                <Play size={14} /> Continue · {dueLeft} still due
+              </button>
+            ) : nextDeck ? (
+              <button className="sb-btn sb-reveal" onClick={learnNext}>
+                <Plus size={14} /> Learn next · {nextDeck.jp}
+              </button>
+            ) : null}
+            {dueLeft === 0 && tomorrow > 0 && (
+              <p className="sb-next-hint" style={{ margin: 0 }}>
+                next reviews tomorrow · {tomorrow} cards
+              </p>
+            )}
             <button
               className="sb-btn sb-act"
               data-ghost="true"
               style={{ justifyContent: "center" }}
-              onClick={() => go({ name: "stats" })}
+              onClick={() => go({ name: "home" })}
             >
-              <ArrowLeft size={13} /> See stats
+              <ArrowLeft size={13} /> Back to the shelf
             </button>
           </div>
         </div>

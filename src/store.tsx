@@ -46,6 +46,14 @@ export interface AppApi {
   cardState: (cardId: string) => CardState | undefined;
   /** shuffled due cards from all active decks, capped by the session limit */
   buildSessionQueue: () => string[];
+  /** total due cards right now across active decks (uncapped) */
+  dueNow: () => number;
+  /** cards coming due between now and the end of tomorrow */
+  dueTomorrow: () => number;
+  /** the next recommended deck to learn (catalog order), if any */
+  nextDeckToLearn: () => Deck | null;
+  /** add a deck to the collection and return a session queue of its cards */
+  collectAndBuildQueue: (deckId: string) => string[];
 
   addToCollection: (deckId: string) => void;
   removeFromCollection: (deckId: string) => void;
@@ -252,6 +260,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       const { limit } = profile.settings;
       return due.slice(0, limit === 0 ? due.length : limit);
+    },
+
+    dueNow: () => {
+      const now = Date.now();
+      const seen = new Set<string>();
+      let n = 0;
+      for (const deck of activeDecks)
+        for (const c of deck.cards)
+          if (!seen.has(c.id) && isDue(profile.cards[c.id], now)) {
+            seen.add(c.id);
+            n++;
+          }
+      return n;
+    },
+
+    dueTomorrow: () => {
+      const now = Date.now();
+      const end = new Date(now);
+      end.setHours(23, 59, 59, 999);
+      const endTomorrow = end.getTime() + 86_400_000;
+      const seen = new Set<string>();
+      let n = 0;
+      for (const deck of activeDecks)
+        for (const c of deck.cards) {
+          if (seen.has(c.id)) continue;
+          seen.add(c.id);
+          const s = profile.cards[c.id];
+          if (s && !s.retired && s.timeToReview > now && s.timeToReview <= endTomorrow) n++;
+        }
+      return n;
+    },
+
+    nextDeckToLearn: () =>
+      decks.find((d) => d.builtin && !profile.collection.includes(d.id)) ?? null,
+
+    collectAndBuildQueue: (deckId) => {
+      const deck = deckById[deckId];
+      if (!deck) return [];
+      api.addToCollection(deckId);
+      const ids = deck.cards.map((c) => c.id);
+      for (let i = ids.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+      }
+      const { limit } = profile.settings;
+      return ids.slice(0, limit === 0 ? ids.length : limit);
     },
 
     addToCollection: (deckId) =>
