@@ -5,6 +5,7 @@ import { fmtNextReview } from "../lib/insights";
 import { GRADES, type Grade } from "../lib/sm2";
 import { useJapaneseVoice } from "../lib/speech";
 import { useApp } from "../store";
+import { GradeSlider } from "./GradeSlider";
 
 export interface SessionResult {
   total: number;
@@ -12,17 +13,6 @@ export interface SessionResult {
   again: number;
   retired: number;
 }
-
-/** Compact button labels; the full bot wording stays in the tooltip/aria-label. */
-const SHORT_LABELS: Record<Grade, string> = {
-  0: "no recall",
-  1: "barely",
-  2: "very close",
-  3: "difficult",
-  4: "hesitated",
-  5: "easy",
-  6: "know it — don't remind me",
-};
 
 function Front({ card, reverse, open }: { card: Card; reverse: boolean; open: boolean }) {
   if (reverse) {
@@ -258,22 +248,7 @@ export function Study({
               </>
             ) : (
               <>
-                <div className="sb-grades" role="group" aria-label="How well did you remember?">
-                  {GRADES.map(({ grade, emoji, label }) => (
-                    <button
-                      key={grade}
-                      className="sb-btn sb-grade"
-                      data-band={grade < 3 ? "fail" : grade < 6 ? "pass" : "retire"}
-                      onClick={() => answer(grade)}
-                      title={label}
-                      aria-label={`${grade} — ${label}`}
-                    >
-                      <span className="sb-grade-emoji" aria-hidden="true">{emoji}</span>
-                      <span className="sb-grade-label">{SHORT_LABELS[grade]}</span>
-                      <span className="sb-grade-num" aria-hidden="true">{grade}</span>
-                    </button>
-                  ))}
-                </div>
+                <GradeSlider key={current.id} onCommit={answer} />
                 <div>
                   <button
                     className="sb-btn sb-sound"
@@ -287,7 +262,7 @@ export function Study({
               </>
             )}
 
-            <div className="sb-keys">space reveal · 0–6 grade · s sound · esc exit</div>
+            <div className="sb-keys">space reveal · drag &amp; release to grade · 0–6 quick keys · s sound · esc exit</div>
           </div>
         )}
       </div>
