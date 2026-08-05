@@ -69,7 +69,10 @@ export function initTelegram(): void {
   // Clients older than Bot API 7.7 ignore disableVerticalSwipes and collapse
   // the webview when the page is pulled down from the very top. Block only
   // that exact gesture (downward drag while the window sits at scroll 0);
-  // every other touch keeps native scrolling.
+  // every other touch keeps native scrolling. Mobile clients only: desktop
+  // Telegram has no swipe-to-close, and its webview can synthesize touch
+  // events from trackpad scrolling, which this guard would swallow.
+  if (wa.platform !== "ios" && wa.platform !== "android") return;
   let startY = 0;
   document.addEventListener(
     "touchstart",
