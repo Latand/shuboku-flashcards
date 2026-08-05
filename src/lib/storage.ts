@@ -16,6 +16,8 @@ export interface Settings {
   autoSound: boolean;
   /** session cap; 0 = no cap */
   limit: number;
+  /** reveal the answer automatically after 60 s (the bot flipped stale cards) */
+  autoFlip: boolean;
 }
 
 export interface Profile {
@@ -24,6 +26,8 @@ export interface Profile {
   createdAt: number;
   /** deck ids (built-in pack ids + this profile's custom deck ids) in the collection */
   collection: string[];
+  /** collected decks whose learning is paused (the bot's UserBlock.active = false) */
+  paused: string[];
   /** per-card repetition state, kept even when a pack leaves the collection */
   cards: Record<string, CardState>;
   customCards: Record<string, Card>;
@@ -39,7 +43,12 @@ export interface Store {
   profiles: Record<string, Profile>;
 }
 
-export const DEFAULT_SETTINGS: Settings = { reverse: false, autoSound: true, limit: 20 };
+export const DEFAULT_SETTINGS: Settings = {
+  reverse: false,
+  autoSound: true,
+  limit: 20,
+  autoFlip: false,
+};
 
 export function uid(): string {
   return typeof crypto !== "undefined" && crypto.randomUUID
@@ -53,6 +62,7 @@ export function newProfile(name: string, now: number): Profile {
     name,
     createdAt: now,
     collection: [],
+    paused: [],
     cards: {},
     customCards: {},
     customDecks: {},
@@ -112,13 +122,26 @@ export function migrateLegacyProgress(
 
 /* ---- load / save ---- */
 
+/** Fill in fields added after the first v2 release (paused decks, new settings). */
+export function normalizeStore(store: Store): Store {
+  for (const id of Object.keys(store.profiles)) {
+    const p = store.profiles[id];
+    store.profiles[id] = {
+      ...p,
+      paused: p.paused ?? [],
+      settings: { ...DEFAULT_SETTINGS, ...p.settings },
+    };
+  }
+  return store;
+}
+
 export function loadStore(now: number): Store {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Store;
       if (parsed && parsed.version === 2 && parsed.profiles[parsed.activeProfileId]) {
-        return parsed;
+        return normalizeStore(parsed);
       }
     }
   } catch {
@@ -165,7 +188,7 @@ export function parseImport(json: string): Store {
     if (!first) throw new Error("Export contains no profiles");
     parsed.activeProfileId = first;
   }
-  return parsed;
+  return normalizeStore(parsed);
 }
 
 /* ---- helpers used by the app ---- */

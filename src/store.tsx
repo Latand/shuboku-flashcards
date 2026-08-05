@@ -29,6 +29,8 @@ export interface AppApi {
   decks: Deck[];
   /** decks currently in the collection */
   collectedDecks: Deck[];
+  /** collected decks that are not paused — these feed reviews and reminders */
+  activeDecks: Deck[];
   cardsById: Record<string, Card>;
   deckById: Record<string, Deck>;
   dueCount: (deckId: string, now: number) => number;
@@ -36,6 +38,8 @@ export interface AppApi {
 
   addToCollection: (deckId: string) => void;
   removeFromCollection: (deckId: string) => void;
+  /** the bot's "pause block learning": keep the deck, skip its reviews */
+  togglePaused: (deckId: string) => void;
   gradeCard: (cardId: string, grade: Grade, now: number) => CardState;
   setRetired: (cardId: string, retired: boolean) => void;
 
@@ -107,6 +111,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const next: Profile = {
         ...cur,
         collection: [...cur.collection],
+        paused: [...cur.paused],
         cards: { ...cur.cards },
         customCards: { ...cur.customCards },
         customDecks: { ...cur.customDecks },
@@ -135,6 +140,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [profile.collection, deckById]
   );
 
+  const activeDecks = useMemo(
+    () => collectedDecks.filter((d) => !profile.paused.includes(d.id)),
+    [collectedDecks, profile.paused]
+  );
+
+  // Reminder equivalent of the bot's cron ping: keep the due count in the tab title.
+  useEffect(() => {
+    const update = () => {
+      const now = Date.now();
+      const due = activeDecks.reduce(
+        (a, d) => a + d.cards.filter((c) => isDue(profile.cards[c.id], now)).length,
+        0
+      );
+      document.title = due > 0 ? `(${due}) 朱墨 Shuboku` : "朱墨 Shuboku — Japanese flashcards";
+    };
+    update();
+    const t = setInterval(update, 60_000);
+    return () => clearInterval(t);
+  }, [activeDecks, profile.cards]);
+
   const cardsById = useMemo(() => {
     const m: Record<string, Card> = {};
     for (const d of decks) for (const c of d.cards) m[c.id] = c;
@@ -146,6 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     profile,
     decks,
     collectedDecks,
+    activeDecks,
     cardsById,
     deckById,
 
@@ -171,6 +197,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     removeFromCollection: (deckId) =>
       patchProfile((p) => {
         p.collection = p.collection.filter((id) => id !== deckId);
+        p.paused = p.paused.filter((id) => id !== deckId);
+      }),
+
+    togglePaused: (deckId) =>
+      patchProfile((p) => {
+        p.paused = p.paused.includes(deckId)
+          ? p.paused.filter((id) => id !== deckId)
+          : [...p.paused, deckId];
       }),
 
     gradeCard: (cardId, grade, now) => {

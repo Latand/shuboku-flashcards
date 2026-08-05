@@ -7,6 +7,7 @@ import { Browser } from "./screens/Browser";
 import { Editor } from "./screens/Editor";
 import { Stats } from "./screens/Stats";
 import { Settings } from "./screens/Settings";
+import { Guide } from "./screens/Guide";
 
 export type Screen =
   | { name: "home" }
@@ -15,7 +16,8 @@ export type Screen =
   | { name: "browser" }
   | { name: "editor"; deckId?: string }
   | { name: "stats" }
-  | { name: "settings" };
+  | { name: "settings" }
+  | { name: "guide" };
 
 function Done({ result, go }: { result: SessionResult; go: (s: Screen) => void }) {
   return (
@@ -84,6 +86,8 @@ function Router() {
       return <Stats go={setScreen} />;
     case "settings":
       return <Settings go={setScreen} />;
+    case "guide":
+      return <Guide go={setScreen} />;
   }
 }
 

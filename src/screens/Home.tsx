@@ -1,7 +1,20 @@
 import { useMemo, useState } from "react";
-import { BarChart3, BookOpen, Check, Pencil, Play, Plus, Settings2, Trash2 } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  Check,
+  Flame,
+  HelpCircle,
+  Pause,
+  Pencil,
+  Play,
+  Plus,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import type { Screen } from "../App";
 import { SCRIPTS } from "../data/packs";
+import { computeStreak } from "../lib/insights";
 import { isDue } from "../lib/sm2";
 import { useApp } from "../store";
 
@@ -16,13 +29,23 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function Home({ go }: { go: (s: Screen) => void }) {
   const app = useApp();
-  const { profile, decks, collectedDecks, addToCollection, removeFromCollection, setSettings } = app;
+  const {
+    profile,
+    decks,
+    collectedDecks,
+    activeDecks,
+    addToCollection,
+    removeFromCollection,
+    togglePaused,
+    setSettings,
+  } = app;
   const settings = profile.settings;
   const now = Date.now();
+  const streak = computeStreak(profile.reviewLog, now);
 
-  // Session deck picker: everything in the collection is on unless deselected.
+  // Session deck picker: every active deck is on unless deselected.
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
-  const sessionDecks = collectedDecks.filter((d) => !deselected.has(d.id));
+  const sessionDecks = activeDecks.filter((d) => !deselected.has(d.id));
 
   const toggleSession = (deckId: string) =>
     setDeselected((prev) => {
@@ -38,7 +61,7 @@ export function Home({ go }: { go: (s: Screen) => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collectedDecks, profile.cards, now]);
 
-  const totalDue = collectedDecks.reduce((a, d) => a + (dueByDeck[d.id] ?? 0), 0);
+  const totalDue = activeDecks.reduce((a, d) => a + (dueByDeck[d.id] ?? 0), 0);
   const sessionDue = sessionDecks.reduce((a, d) => a + (dueByDeck[d.id] ?? 0), 0);
 
   const begin = () => {
@@ -75,6 +98,14 @@ export function Home({ go }: { go: (s: Screen) => void }) {
             <span className={totalDue ? "sb-due-dot" : ""}>
               {totalDue ? `${totalDue} due today` : "nothing due"}
             </span>
+            {streak.current > 0 && (
+              <>
+                <span>·</span>
+                <span className="sb-flame">
+                  <Flame size={11} style={{ verticalAlign: "-2px" }} /> {streak.current}d streak
+                </span>
+              </>
+            )}
           </div>
           <nav className="sb-nav">
             <button className="sb-btn" onClick={() => go({ name: "browser" })}>
@@ -88,6 +119,10 @@ export function Home({ go }: { go: (s: Screen) => void }) {
             <button className="sb-btn" onClick={() => go({ name: "settings" })}>
               <Settings2 size={11} style={{ verticalAlign: "-2px", marginRight: 6 }} />
               Settings
+            </button>
+            <button className="sb-btn" onClick={() => go({ name: "guide" })}>
+              <HelpCircle size={11} style={{ verticalAlign: "-2px", marginRight: 6 }} />
+              Guide
             </button>
           </nav>
         </header>
@@ -110,14 +145,16 @@ export function Home({ go }: { go: (s: Screen) => void }) {
           ) : (
             <div className="sb-packs">
               {collectedDecks.map((d) => {
-                const on = !deselected.has(d.id);
+                const paused = profile.paused.includes(d.id);
+                const on = !paused && !deselected.has(d.id);
                 const due = dueByDeck[d.id] ?? 0;
                 return (
                   <div key={d.id} style={{ display: "flex", gap: 8 }}>
                     <button
                       className="sb-btn sb-pack"
                       data-on={on}
-                      onClick={() => toggleSession(d.id)}
+                      data-paused={paused}
+                      onClick={() => !paused && toggleSession(d.id)}
                       aria-pressed={on}
                       style={{ flex: 1 }}
                     >
@@ -127,14 +164,22 @@ export function Home({ go }: { go: (s: Screen) => void }) {
                       <span>
                         <span className="sb-pack-jp">{d.jp}</span>
                         <span className="sb-pack-en" style={{ display: "block" }}>
-                          {d.name} · {d.cards.length} cards
+                          {paused ? "paused" : `${d.name} · ${d.cards.length} cards`}
                         </span>
                       </span>
                       <span className="sb-count">
-                        <span className="sb-due-badge" data-zero={due === 0}>
-                          {due}
+                        <span className="sb-due-badge" data-zero={paused || due === 0}>
+                          {paused ? "⏸" : due}
                         </span>
                       </span>
+                    </button>
+                    <button
+                      className="sb-btn sb-pack-side"
+                      onClick={() => togglePaused(d.id)}
+                      aria-label={paused ? `Resume ${d.name}` : `Pause ${d.name}`}
+                      title={paused ? "Resume learning this deck" : "Pause learning (deck stays, reviews stop)"}
+                    >
+                      {paused ? <Play size={12} /> : <Pause size={12} />}
                     </button>
                     <button
                       className="sb-btn sb-pack-side"
@@ -300,6 +345,31 @@ export function Home({ go }: { go: (s: Screen) => void }) {
                 onClick={() => setSettings({ reverse: true })}
               >
                 音→字
+              </button>
+            </span>
+          </div>
+
+          <div className="sb-opt">
+            <span>
+              <span className="sb-opt-label">Auto-reveal</span>
+              <span className="sb-opt-hint" style={{ display: "block" }}>
+                Flip the card by itself after 60 seconds.
+              </span>
+            </span>
+            <span className="sb-seg">
+              <button
+                className="sb-btn"
+                data-on={settings.autoFlip}
+                onClick={() => setSettings({ autoFlip: true })}
+              >
+                ON
+              </button>
+              <button
+                className="sb-btn"
+                data-on={!settings.autoFlip}
+                onClick={() => setSettings({ autoFlip: false })}
+              >
+                OFF
               </button>
             </span>
           </div>

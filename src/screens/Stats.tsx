@@ -1,23 +1,31 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Flame } from "lucide-react";
 import type { Screen } from "../App";
+import { aggregates, computeStreak, rankAmong } from "../lib/insights";
 import { DAY_MS, isDue } from "../lib/sm2";
 import { todayKey } from "../lib/storage";
 import { useApp } from "../store";
 
 export function Stats({ go }: { go: (s: Screen) => void }) {
-  const { profile, collectedDecks } = useApp();
+  const { store, profile, activeDecks } = useApp();
   const now = Date.now();
 
-  const collectedCardIds = new Set(
-    collectedDecks.flatMap((d) => d.cards.map((c) => c.id))
-  );
+  const activeCardIds = new Set(activeDecks.flatMap((d) => d.cards.map((c) => c.id)));
 
   const states = Object.entries(profile.cards);
-  const tracked = states.length;
-  const retired = states.filter(([, s]) => s.retired).length;
-  const dueNow = states.filter(
-    ([id, s]) => collectedCardIds.has(id) && isDue(s, now)
-  ).length;
+  const agg = aggregates(profile.cards, activeCardIds);
+  const dueNow = states.filter(([id, s]) => activeCardIds.has(id) && isDue(s, now)).length;
+  const streak = computeStreak(profile.reviewLog, now);
+
+  // Leaderboard among the profiles on this device (the bot ranked users).
+  const profiles = Object.values(store.profiles);
+  const learnedByProfile = profiles.map(
+    (p) => aggregates(p.cards, new Set<string>()).learned
+  );
+  const repsByProfile = profiles.map(
+    (p) => aggregates(p.cards, new Set<string>()).totalReps
+  );
+  const learnedRank = rankAmong(agg.learned, learnedByProfile.filter((_, i) => profiles[i].id !== profile.id));
+  const repsRank = rankAmong(agg.totalReps, repsByProfile.filter((_, i) => profiles[i].id !== profile.id));
 
   // Reviews per day, last 14 days.
   const days: { label: string; count: number }[] = [];
@@ -37,10 +45,7 @@ export function Stats({ go }: { go: (s: Screen) => void }) {
     const start = i === 0 ? -Infinity : end - DAY_MS;
     const count = states.filter(
       ([id, s]) =>
-        collectedCardIds.has(id) &&
-        !s.retired &&
-        s.timeToReview > start &&
-        s.timeToReview <= end
+        activeCardIds.has(id) && !s.retired && s.timeToReview > start && s.timeToReview <= end
     ).length;
     forecast.push({ label: i === 0 ? "today" : `+${i}d`, count });
   }
@@ -62,14 +67,54 @@ export function Stats({ go }: { go: (s: Screen) => void }) {
             <div className="sb-stat-l">due now</div>
           </div>
           <div className="sb-stat">
-            <div className="sb-stat-n">{tracked}</div>
-            <div className="sb-stat-l">tracked</div>
+            <div className="sb-stat-n">
+              <Flame size={18} className="sb-flame" style={{ verticalAlign: "-2px" }} />{" "}
+              {streak.current}
+            </div>
+            <div className="sb-stat-l">day streak · best {streak.best}</div>
           </div>
           <div className="sb-stat">
-            <div className="sb-stat-n">{retired}</div>
-            <div className="sb-stat-l">retired</div>
+            <div className="sb-stat-n">{agg.totalReps}</div>
+            <div className="sb-stat-l">total reviews</div>
           </div>
         </div>
+
+        <div className="sb-stats" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+          <div className="sb-stat">
+            <div className="sb-stat-n">{agg.learned}</div>
+            <div className="sb-stat-l">👍 learned</div>
+          </div>
+          <div className="sb-stat">
+            <div className="sb-stat-n">{agg.learning}</div>
+            <div className="sb-stat-l">🟡 learning</div>
+          </div>
+          <div className="sb-stat">
+            <div className="sb-stat-n">{agg.failed}</div>
+            <div className="sb-stat-l">👎 struggling</div>
+          </div>
+          <div className="sb-stat">
+            <div className="sb-stat-n">{agg.active}</div>
+            <div className="sb-stat-l">🟢 in rotation</div>
+          </div>
+          <div className="sb-stat">
+            <div className="sb-stat-n">{agg.inactive}</div>
+            <div className="sb-stat-l">🔴 out of rotation</div>
+          </div>
+          <div className="sb-stat">
+            <div className="sb-stat-n">{agg.retired}</div>
+            <div className="sb-stat-l">😎 retired</div>
+          </div>
+        </div>
+
+        {profiles.length > 1 && (
+          <p className="sb-note">
+            🏆 Among the {profiles.length} profiles on this device you are #{learnedRank} by
+            learned cards and #{repsRank} by total reviews.
+          </p>
+        )}
+        <p className="sb-note">
+          A card counts as learned once you have remembered it twice in a row.
+        </p>
 
         <section className="sb-sec">
           <div className="sb-sec-head">

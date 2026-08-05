@@ -19,10 +19,19 @@ browser's `localStorage`.
 - **Profiles** — several people can study on one device; each profile keeps
   its own collection, schedule and stats. Export/import moves everything
   between devices as JSON.
-- **Review sessions** — flip the card, grade yourself 0–6, hear the reading
-  via speech synthesis, kana↔romaji direction toggle, keyboard shortcuts.
-- **Card browser & stats** — per-card intervals, next-review dates,
-  retire/un-retire, reviews-per-day history and a due forecast for the week.
+- **Review sessions** — a focused card panel, 0–6 grading with color-coded
+  bands, "next review in …" feedback after every grade, speech synthesis,
+  kana↔romaji direction toggle, optional 60-second auto-reveal, keyboard
+  shortcuts.
+- **Streak** — consecutive review days (current and best) tracked per profile.
+- **Deck pausing** — pause a deck without losing its schedule, resume any time
+  (the bot's "pause block learning").
+- **Card browser & stats** — per-card intervals, next-review dates, the bot's
+  colored last-grade bar, retire/un-retire, learned/learning/struggling
+  breakdowns, per-device profile leaderboard, reviews-per-day history and a
+  due forecast for the week.
+- **Due reminder** — the tab title shows the live due count, so a pinned tab
+  works like the bot's review ping. A built-in guide explains the method.
 
 ## The algorithm
 

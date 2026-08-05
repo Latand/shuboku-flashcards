@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Eye, Shuffle, Volume2 } from "lucide-react";
 import type { Card } from "../data/packs";
+import { fmtNextReview } from "../lib/insights";
 import { GRADES, type Grade } from "../lib/sm2";
 import { useJapaneseVoice } from "../lib/speech";
 import { useApp } from "../store";
@@ -11,6 +12,17 @@ export interface SessionResult {
   again: number;
   retired: number;
 }
+
+/** Compact button labels; the full bot wording stays in the tooltip/aria-label. */
+const SHORT_LABELS: Record<Grade, string> = {
+  0: "no recall",
+  1: "barely",
+  2: "very close",
+  3: "difficult",
+  4: "hesitated",
+  5: "easy",
+  6: "know it — don't remind me",
+};
 
 function Front({ card, reverse, open }: { card: Card; reverse: boolean; open: boolean }) {
   if (reverse) {
@@ -96,11 +108,13 @@ export function Study({
 }) {
   const { cardsById, gradeCard, profile } = useApp();
   const { speak, hasVoice, checked } = useJapaneseVoice();
-  const { reverse, autoSound } = profile.settings;
+  const { reverse, autoSound, autoFlip } = profile.settings;
 
   const [queue, setQueue] = useState<string[]>(initialQueue);
   const [open, setOpen] = useState(false);
   const [tally, setTally] = useState({ reviewed: 0, again: 0, retired: 0 });
+  const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
+  const doneRef = useRef(false);
   const total = initialQueue.length;
 
   const current = queue.length ? cardsById[queue[0]] : null;
@@ -117,10 +131,25 @@ export function Study({
     if (autoSound) setTimeout(() => speak(current.speak), 130);
   }, [open, current, autoSound, speak]);
 
+  // The bot's instruction: don't sit on one card — flip it automatically.
+  useEffect(() => {
+    if (!autoFlip || open || !current) return;
+    const t = setTimeout(flip, 60_000);
+    return () => clearTimeout(t);
+  }, [autoFlip, open, current, flip]);
+
   const answer = useCallback(
     (grade: Grade) => {
       if (!current) return;
-      gradeCard(current.id, grade, Date.now());
+      const now = Date.now();
+      const next = gradeCard(current.id, grade, now);
+      const text =
+        grade === 6
+          ? "😎 Retired — it won't come back"
+          : grade < 3
+            ? "🔁 Again in a few cards"
+            : `${GRADES[grade].emoji} Next review ${fmtNextReview(next.timeToReview - now)}`;
+      setToast({ text, key: now });
       setTally((t) => ({
         reviewed: t.reviewed + 1,
         again: t.again + (grade < 3 ? 1 : 0),
@@ -141,8 +170,11 @@ export function Study({
   );
 
   useEffect(() => {
-    if (total > 0 && queue.length === 0) {
-      onDone({ total, ...tally });
+    if (total > 0 && queue.length === 0 && !doneRef.current) {
+      doneRef.current = true;
+      // Let the last toast breathe before the summary screen.
+      const t = setTimeout(() => onDone({ total, ...tally }), 600);
+      return () => clearTimeout(t);
     }
   }, [queue.length, total, tally, onDone]);
 
@@ -171,7 +203,7 @@ export function Study({
 
       <div className="sb-wrap">
         <div className="sb-bar-top">
-          <button className="sb-btn sb-icon" onClick={onExit} aria-label="Back to decks">
+          <button className="sb-btn sb-icon" onClick={onExit} aria-label="End session">
             <ArrowLeft size={17} />
           </button>
           <button
@@ -182,17 +214,21 @@ export function Study({
             <Shuffle size={15} />
           </button>
           <span className="sb-meta">
-            <b>{tally.reviewed}</b> reviews · {uniqueLeft} left
+            <b>{total - uniqueLeft}</b> / {total} · {tally.reviewed} reps
           </span>
         </div>
 
         {current && (
-          <div className="sb-stage">
+          <div className="sb-study">
             <button
-              className="sb-tap"
+              className="sb-btn sb-cardpanel"
+              data-open={open}
               onClick={flip}
               aria-label={open ? "Answer shown" : "Reveal answer"}
             >
+              <span className="sb-corner">
+                {current.type === "kanji" ? "漢字 · kanji" : current.type === "custom" ? "自作 · custom" : "かな · kana"}
+              </span>
               <Front card={current} reverse={reverse} open={open} />
               <div className="sb-rule" key={"r" + current.id + open} />
               {!open ? (
@@ -204,37 +240,63 @@ export function Study({
               )}
             </button>
 
-            <button className="sb-btn sb-sound" onClick={sayCurrent} disabled={checked && !hasVoice}>
-              <Volume2 size={14} />
-              {checked && !hasVoice ? "no voice" : "hear it"}
-            </button>
-
             {!open ? (
-              <button className="sb-btn sb-reveal" onClick={flip}>
-                <Eye size={14} /> Reveal
-              </button>
-            ) : (
-              <div className="sb-grades">
-                {GRADES.map(({ grade, emoji, label }) => (
+              <>
+                <button className="sb-btn sb-reveal" onClick={flip}>
+                  <Eye size={14} /> Reveal
+                </button>
+                <div>
                   <button
-                    key={grade}
-                    className="sb-btn sb-grade"
-                    data-band={grade < 3 ? "fail" : grade < 6 ? "pass" : "retire"}
-                    onClick={() => answer(grade)}
-                    title={label}
+                    className="sb-btn sb-sound"
+                    onClick={sayCurrent}
+                    disabled={checked && !hasVoice}
                   >
-                    <span className="sb-grade-emoji">{emoji}</span>
-                    <span className="sb-grade-label">{label}</span>
-                    <span className="sb-grade-num">{grade}</span>
+                    <Volume2 size={14} />
+                    {checked && !hasVoice ? "no voice" : "hear it"}
                   </button>
-                ))}
-              </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="sb-grades" role="group" aria-label="How well did you remember?">
+                  {GRADES.map(({ grade, emoji, label }) => (
+                    <button
+                      key={grade}
+                      className="sb-btn sb-grade"
+                      data-band={grade < 3 ? "fail" : grade < 6 ? "pass" : "retire"}
+                      onClick={() => answer(grade)}
+                      title={label}
+                      aria-label={`${grade} — ${label}`}
+                    >
+                      <span className="sb-grade-emoji" aria-hidden="true">{emoji}</span>
+                      <span className="sb-grade-label">{SHORT_LABELS[grade]}</span>
+                      <span className="sb-grade-num" aria-hidden="true">{grade}</span>
+                    </button>
+                  ))}
+                </div>
+                <div>
+                  <button
+                    className="sb-btn sb-sound"
+                    onClick={sayCurrent}
+                    disabled={checked && !hasVoice}
+                  >
+                    <Volume2 size={14} />
+                    {checked && !hasVoice ? "no voice" : "hear it"}
+                  </button>
+                </div>
+              </>
             )}
 
             <div className="sb-keys">space reveal · 0–6 grade · s sound · esc exit</div>
           </div>
         )}
       </div>
+
+      {toast && (
+        <div className="sb-toast" key={toast.key} role="status">
+          {toast.text}
+        </div>
+      )}
     </div>
   );
 }

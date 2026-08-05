@@ -1,13 +1,26 @@
 import { useState } from "react";
 import { ArrowLeft, ArchiveRestore, Archive } from "lucide-react";
 import type { Screen } from "../App";
-import { DAY_MS, GRADES } from "../lib/sm2";
+import { gradeBar } from "../lib/insights";
+import { DAY_MS } from "../lib/sm2";
 import { useApp } from "../store";
 
 function fmtNext(timeToReview: number, now: number): string {
   if (timeToReview <= now) return "due now";
   const days = Math.ceil((timeToReview - now) / DAY_MS);
   return days === 1 ? "in 1 day" : `in ${days} days`;
+}
+
+/** The bot's colored-squares last-grade bar. */
+function GradeBar({ grade }: { grade: number }) {
+  const { filled, tone } = gradeBar(grade);
+  return (
+    <span className="sb-gradebar" data-tone={tone} title={`last grade ${grade}/6`}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <i key={i} data-on={i < filled} />
+      ))}
+    </span>
+  );
 }
 
 export function Browser({ go }: { go: (s: Screen) => void }) {
@@ -53,10 +66,8 @@ export function Browser({ go }: { go: (s: Screen) => void }) {
             <div className="sb-rows">
               {deck.cards.map((card) => {
                 const s = cardState(card.id);
-                const gradeInfo =
-                  s?.lastGrade != null ? GRADES.find((g) => g.grade === s.lastGrade) : null;
                 const sub = s
-                  ? `${gradeInfo ? gradeInfo.emoji + " " : ""}${
+                  ? `${
                       s.retired
                         ? "retired"
                         : `${s.interval}d interval · ${fmtNext(s.timeToReview, now)}`
@@ -71,7 +82,8 @@ export function Browser({ go }: { go: (s: Screen) => void }) {
                           ? card.romaji
                           : card.type === "kanji"
                             ? card.meaning
-                            : card.back}
+                            : card.back}{" "}
+                        {s?.lastGrade != null && <GradeBar grade={s.lastGrade} />}
                       </span>
                       <span className="sb-row-sub" style={{ display: "block" }}>
                         {sub}
