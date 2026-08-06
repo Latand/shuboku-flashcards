@@ -14,6 +14,20 @@ export const MAX_DESIRED_RETENTION = 0.97;
 
 export type Grade = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
+/** One graded review: what you said about the card, and when. */
+export interface GradeEntry {
+  /** epoch milliseconds of the review */
+  at: number;
+  grade: Grade;
+}
+
+/**
+ * How many past reviews a card remembers. Enough to show the shape of a card's
+ * life, and small enough that a full collection still fits comfortably in
+ * Telegram's cloud storage.
+ */
+export const HISTORY_LIMIT = 24;
+
 export interface CardState {
   /** Shuboku scheduler state format. Missing means legacy SM-2 state. */
   schedulerVersion?: 1;
@@ -37,6 +51,8 @@ export interface CardState {
   timeToReview: number;
   totalRepetitions: number;
   lastGrade: Grade | null;
+  /** Every grade this card has been given, oldest first. Absent in 0.1 state. */
+  history?: GradeEntry[];
   retired: boolean;
 }
 
@@ -64,8 +80,13 @@ export function newCardState(now: number): CardState {
     timeToReview: now,
     totalRepetitions: 0,
     lastGrade: null,
+    history: [],
     retired: false,
   };
+}
+
+function remember(history: GradeEntry[] | undefined, entry: GradeEntry): GradeEntry[] {
+  return [...(history ?? []), entry].slice(-HISTORY_LIMIT);
 }
 
 const schedulers = new Map<number, ReturnType<typeof fsrs>>();
@@ -163,6 +184,7 @@ export function review(
       ...state,
       retired: true,
       lastGrade: 6,
+      history: remember(state.history, { at: now, grade: 6 }),
       totalRepetitions: previousTotal + 1,
       intervalStart: now,
     };
@@ -192,6 +214,7 @@ export function review(
     timeToReview: card.due.getTime(),
     totalRepetitions: previousTotal + 1,
     lastGrade: grade,
+    history: remember(state.history, { at: reviewAt, grade }),
     retired: false,
   };
 }

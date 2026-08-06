@@ -8,6 +8,7 @@ import { useJapaneseVoice, warmClips } from "../lib/speech";
 import { haptics, setClosingConfirmation } from "../lib/telegram";
 import { useApp } from "../store";
 import { GradeSlider } from "./GradeSlider";
+import { GradeHistory } from "./GradeHistory";
 
 export interface SessionResult {
   total: number;
@@ -218,9 +219,9 @@ export function Study({
       };
       const text =
         grade === 6
-          ? "😎 Retired — it won't come back"
+          ? "😎 Retired. This card will not come back."
           : grade < 3
-            ? "🔁 Again in a few cards"
+            ? "🔁 Coming back in a few cards"
             : `${GRADES[grade].emoji} Next review ${fmtNextReview(next.timeToReview - now)}`;
       showToast(text, undo);
       setTally((t) => ({
@@ -307,7 +308,7 @@ export function Study({
               <Front card={current} reverse={reverse} open={open} />
               <div className="sb-rule" key={"r" + current.id + open} />
               {!open ? (
-                <div className="sb-hidden">tap to reveal</div>
+                <div className="sb-hidden">tap to see the answer</div>
               ) : (
                 <div className="sb-answer" key={"a" + current.id}>
                   <Back card={current} reverse={reverse} />
@@ -334,6 +335,7 @@ export function Study({
             ) : (
               <>
                 <GradeSlider key={current.id} suggestion={suggestion} onCommit={answer} />
+                <GradeHistory history={profile.cards[current.id]?.history ?? []} compact />
                 <div>
                   <button
                     className="sb-btn sb-sound"
@@ -347,7 +349,7 @@ export function Study({
               </>
             )}
 
-            <div className="sb-keys">space reveal · drag &amp; release to grade · 0–6 quick keys · z undo · esc exit</div>
+            <div className="sb-keys">space to reveal · drag and release to grade · 0–6 to grade directly · z to undo · esc to leave</div>
           </div>
         )}
 

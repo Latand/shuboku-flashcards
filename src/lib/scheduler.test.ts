@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   DAY_MS,
+  HISTORY_LIMIT,
   newCardState,
   review,
   recallProbability,
@@ -143,6 +144,32 @@ describe("late reviews", () => {
     const next = review(state, 5, early);
     expect(next.stability).toBeGreaterThanOrEqual(state.stability!);
     expect(next.interval).toBeGreaterThanOrEqual(state.interval);
+  });
+});
+
+describe("the record of past grades", () => {
+  test("keeps every grade in the order they were given", () => {
+    const { state } = run([1, 3, 4, 5]);
+    expect(state.history?.map((h) => h.grade)).toEqual([1, 3, 4, 5]);
+  });
+
+  test("stamps each grade with the moment of that review", () => {
+    const { state } = run([4, 4]);
+    const times = state.history!.map((h) => h.at);
+    expect(times[1]).toBeGreaterThan(times[0]);
+    expect(times[1]).toBe(state.lastReview!);
+  });
+
+  test("records retiring the card, since that is a judgement too", () => {
+    const { state } = run([4, 6]);
+    expect(state.history?.map((h) => h.grade)).toEqual([4, 6]);
+    expect(state.retired).toBe(true);
+  });
+
+  test("remembers a bounded number of reviews, keeping the recent ones", () => {
+    const { state } = run(new Array(HISTORY_LIMIT + 6).fill(4));
+    expect(state.history).toHaveLength(HISTORY_LIMIT);
+    expect(state.totalRepetitions).toBe(HISTORY_LIMIT + 6);
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { DAY_MS } from "./scheduler";
-import { migrateLegacyProgress, newProfile, parseImport, newStore } from "./storage";
+import { migrateLegacyProgress, newProfile, normalizeStore, parseImport, newStore } from "./storage";
 
 const NOW = Date.UTC(2026, 7, 1);
 
@@ -63,5 +63,43 @@ describe("import validation", () => {
     expect(
       parseImport(JSON.stringify(store)).profiles[store.activeProfileId].settings.desiredRetention
     ).toBe(0.9);
+  });
+});
+
+describe("grade history on stored cards", () => {
+  test("reconstructs one entry for cards graded before histories were kept", () => {
+    const store = newStore(NOW);
+    const profile = store.profiles[store.activeProfileId];
+    profile.cards["hiragana:あ:a"] = {
+      nRepetitions: 3,
+      easinessFactor: 2.5,
+      interval: 12,
+      intervalStart: NOW - 12 * DAY_MS,
+      timeToReview: NOW,
+      totalRepetitions: 5,
+      lastGrade: 4,
+      retired: false,
+    };
+    const history = normalizeStore(store).profiles[store.activeProfileId].cards["hiragana:あ:a"]
+      .history;
+    expect(history).toEqual([{ at: NOW - 12 * DAY_MS, grade: 4 }]);
+  });
+
+  test("leaves a never-graded card with an empty record rather than a made-up one", () => {
+    const store = newStore(NOW);
+    const profile = store.profiles[store.activeProfileId];
+    profile.cards["hiragana:い:i"] = {
+      nRepetitions: 0,
+      easinessFactor: 2.5,
+      interval: 0,
+      intervalStart: NOW,
+      timeToReview: NOW,
+      totalRepetitions: 0,
+      lastGrade: null,
+      retired: false,
+    };
+    expect(
+      normalizeStore(store).profiles[store.activeProfileId].cards["hiragana:い:i"].history
+    ).toEqual([]);
   });
 });

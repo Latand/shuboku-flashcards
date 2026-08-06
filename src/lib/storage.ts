@@ -155,6 +155,21 @@ export function normalizeStore(store: Store): Store {
       typeof desiredRetention === "number" && Number.isFinite(desiredRetention)
         ? Math.min(MAX_DESIRED_RETENTION, Math.max(MIN_DESIRED_RETENTION, desiredRetention))
         : DEFAULT_DESIRED_RETENTION;
+    // Cards graded before the app kept a history get one entry, reconstructed
+    // from the last grade — the only past review still on record.
+    for (const [cardId, state] of Object.entries(p.cards)) {
+      if (Array.isArray(state.history)) continue;
+      p.cards = {
+        ...p.cards,
+        [cardId]: {
+          ...state,
+          history:
+            state.lastGrade != null
+              ? [{ at: state.lastReview ?? state.intervalStart, grade: state.lastGrade }]
+              : [],
+        },
+      };
+    }
     // Invariant: every card of a collected deck has repetition state,
     // otherwise it could never become due.
     for (const deckId of p.collection) {

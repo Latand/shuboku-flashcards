@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, ArchiveRestore, Archive } from "lucide-react";
 import type { Screen } from "../App";
 import type { Card, Deck } from "../data/packs";
@@ -6,6 +6,7 @@ import { compareWeakness, gradeBar } from "../lib/insights";
 import { DAY_MS, recallProbability, type CardState } from "../lib/scheduler";
 import { haptics } from "../lib/telegram";
 import { useApp } from "../store";
+import { GradeHistory } from "./GradeHistory";
 
 function fmtNext(timeToReview: number, now: number): string {
   if (timeToReview <= now) return "due now";
@@ -28,6 +29,8 @@ function GradeBar({ grade }: { grade: number }) {
 export function Browser({ go }: { go: (s: Screen) => void }) {
   const { profile, collectedDecks, setRetired } = useApp();
   const now = Date.now();
+  /** The card whose review history is open, if any. */
+  const [opened, setOpened] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const list: { card: Card; deck: Deck; s: CardState | undefined }[] = [];
@@ -84,10 +87,27 @@ export function Browser({ go }: { go: (s: Screen) => void }) {
                           : `${s.interval}d interval · ${fmtNext(s.timeToReview, now)}`
                     } · ${s.totalRepetitions} reps${memory ? ` · ${memory}` : ""} · ${deck.jp}`
                   : `never studied · ${deck.jp}`;
+                const history = s?.history ?? [];
+                const isOpen = opened === card.id;
                 return (
                   <div className="sb-row" key={card.id} data-retired={!!s?.retired}>
                     <span className="sb-row-char">{card.char}</span>
-                    <span className="sb-row-main">
+                    <span
+                      className="sb-row-main"
+                      role={history.length > 1 ? "button" : undefined}
+                      tabIndex={history.length > 1 ? 0 : undefined}
+                      data-openable={history.length > 1}
+                      onClick={() => {
+                        if (history.length < 2) return;
+                        haptics.selection();
+                        setOpened(isOpen ? null : card.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter" && e.key !== " ") return;
+                        e.preventDefault();
+                        if (history.length > 1) setOpened(isOpen ? null : card.id);
+                      }}
+                    >
                       <span>
                         {card.type === "kana"
                           ? card.romaji
@@ -98,7 +118,11 @@ export function Browser({ go }: { go: (s: Screen) => void }) {
                       </span>
                       <span className="sb-row-sub" style={{ display: "block" }}>
                         {sub}
+                        {history.length > 1 && (
+                          <span className="sb-row-more"> · {isOpen ? "hide" : "history"}</span>
+                        )}
                       </span>
+                      {isOpen && <GradeHistory history={history} />}
                     </span>
                     <span className="sb-row-side">
                       {s && (

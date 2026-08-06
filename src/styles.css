@@ -338,6 +338,33 @@ html, body { overscroll-behavior-y: none; }
   text-transform: uppercase; color: #5d554f;
 }
 
+[data-openable="true"] { cursor: pointer; }
+[data-openable="true"]:hover .sb-row-more { color: var(--ember); }
+.sb-row-more { color: var(--blood); }
+
+/* --- how this card has gone, review by review --- */
+.sb-history { margin: 18px 0 0; }
+.sb-history svg { display: block; width: 100%; overflow: visible; }
+.sb-history[hidden] { display: none; }
+.sb-history-rule { stroke: #241f24; stroke-width: 1; stroke-dasharray: 2 4; }
+.sb-history-area { fill: rgba(168,15,24,.10); stroke: none; }
+.sb-history[data-compact="true"] .sb-history-area { fill: rgba(168,15,24,.055); }
+.sb-history-line {
+  fill: none; stroke: var(--blood); stroke-width: 1.5;
+  stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke;
+}
+.sb-history-dot { stroke: var(--ink); stroke-width: 1; fill: var(--ash); }
+.sb-history-dot[data-band="fail"] { fill: var(--ember); }
+.sb-history-dot[data-band="mid"] { fill: #c8a94e; }
+.sb-history-dot[data-band="pass"] { fill: #6fae7f; }
+.sb-history-dot[data-band="retire"] { fill: #e7cf7a; }
+.sb-history figcaption {
+  display: flex; justify-content: space-between; gap: 10px; margin-top: 7px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .16em;
+  text-transform: uppercase; color: #5d554f;
+}
+.sb-history[data-compact="true"] figcaption { justify-content: center; }
+
 /* why the slider opened where it did */
 .sb-slider-hint {
   margin: 10px 0 0; text-align: center;

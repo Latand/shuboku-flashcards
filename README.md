@@ -26,6 +26,10 @@ browser's `localStorage`.
 - **Streak** — consecutive review days (current and best) tracked per profile.
 - **Deck pausing** — pause a deck without losing its schedule, resume any time
   (the bot's "pause block learning").
+- **Grade history** — every card keeps the grades you have given it. A small
+  chart sits under the grading slider during a session, and the card browser
+  opens the full one with dates, so a card that climbed out of trouble shows
+  it.
 - **Card browser & stats** — per-card intervals, next-review dates, the bot's
   colored last-grade bar, retire/un-retire, learned/learning/struggling
   breakdowns, per-device profile leaderboard, reviews-per-day history and a

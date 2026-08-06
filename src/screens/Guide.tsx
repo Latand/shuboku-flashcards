@@ -27,6 +27,7 @@ const SECTIONS: { jp: string; en: string; body: string[] }[] = [
     body: [
       "Grade the effort required for recall. Hesitated a while? That's a 4, maybe a 3. Peeked at the answer and thought “of course” — that recognition feeling is exactly what grade 2 is for: recognizing is much easier than recalling.",
       "Give a card about 30 seconds. When nothing surfaces, flip it and grade low. That honest signal improves the next schedule. The settings include an auto-reveal option.",
+      "Under the slider is the card's own record: every grade you have given it, oldest on the left, with the dotted line marking the border between a miss and a recall. A card that starts low and climbs is one you are learning; the full version, with dates, opens from the card browser.",
       "The slider already opens somewhere: the pause before you revealed the answer, measured against your own usual pace and this card's history, picks a starting grade and says why underneath. Quick recall on a familiar card opens confident, a long pause on a card that keeps fighting back opens at 3. Past a minute the clock says nothing and the middle grade returns. It is only a starting point — where you release still decides.",
     ],
   },
