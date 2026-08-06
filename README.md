@@ -91,9 +91,16 @@ The rationale and compatibility invariants are recorded in
 
 ## Audio
 
-Every built-in reading ships as an audio file under `public/audio/`, named
-after the reading's codepoints — 314 clips, 2.4 MB. The browser's own speech
-synthesis is a fallback, used for cards you write yourself.
+Every built-in reading ships as an audio file under `audio/`, named after the
+reading's codepoints — 314 clips, 2.4 MB. The browser's own speech synthesis is
+a fallback, used for cards you write yourself.
+
+The clips sit outside the deployed bundle and are served from jsDelivr, which
+publishes any public repository. Putting them in the Pages artifact made every
+deployment sit in the queue until it timed out — four attempts in a row, while
+the same commit without the audio published in two minutes. The URL is pinned
+to the `audio-v1` tag, so the CDN treats it as immutable; move that tag, or
+bump it in `src/lib/audio.ts`, whenever the clips change.
 
 Files rather than the Web Speech API, because the API is not everywhere: the
 Telegram desktop client embeds a WebKitGTK build with no `speechSynthesis` at

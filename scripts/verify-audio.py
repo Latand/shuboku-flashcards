@@ -26,7 +26,7 @@ import whisper
 
 ROOT = Path(__file__).resolve().parent.parent
 RAW = "--raw" in sys.argv
-CLIPS = ROOT / (".audio-raw" if RAW else "public/audio")
+CLIPS = ROOT / (".audio-raw" if RAW else "audio")
 CACHE = ROOT / ".audio-raw" / ("asr-raw.json" if RAW else "asr-clips.json")
 
 STRIP = "、。，．・…ー「」!?！？ 　\n"

@@ -1,4 +1,4 @@
-/* Serves the repository root so audio-review.html can reach public/audio/. */
+/* Serves the repository root so audio-review.html can reach audio/. */
 const port = Number(process.env.PORT ?? 5210);
 const root = new URL("../", import.meta.url).pathname;
 

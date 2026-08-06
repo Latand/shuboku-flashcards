@@ -22,7 +22,7 @@ describe("clip coverage", () => {
     // A phantom entry is worse than a missing one: the card would try the file,
     // get a 404 and stay silent instead of falling back to the browser voice.
     const phantom = [...AUDIO_READINGS].filter(
-      (reading) => !existsSync(`public/audio/${audioKey(reading)}.mp3`)
+      (reading) => !existsSync(`audio/${audioKey(reading)}.mp3`)
     );
     expect(phantom).toEqual([]);
   });

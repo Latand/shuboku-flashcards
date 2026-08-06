@@ -142,7 +142,7 @@ function play(key, el) {
   document.querySelectorAll('.item[data-playing="true"]').forEach((n) => (n.dataset.playing = "false"));
   if (el) { el.dataset.playing = "true"; el.scrollIntoView({ block: "center", behavior: "smooth" }); }
   audio.pause();
-  audio = new Audio("public/audio/" + key + ".mp3");
+  audio = new Audio("audio/" + key + ".mp3");
   audio.play().catch((e) => console.warn("play failed", e));
   return audio;
 }
