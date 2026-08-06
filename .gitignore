@@ -4,6 +4,4 @@ dist
 .DS_Store
 audio-review.html
 .review.log
-audio-compare.html
-audio-compare/
 .audio-raw/

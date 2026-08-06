@@ -92,20 +92,35 @@ The rationale and compatibility invariants are recorded in
 ## Audio
 
 Every built-in reading ships as an audio file under `public/audio/`, named
-after the reading's codepoints — 314 clips, 2.8 MB, about four and a half
-minutes of speech. The browser's own speech synthesis is a fallback, used for
-cards you write yourself.
+after the reading's codepoints — 314 clips, 2.4 MB. The browser's own speech
+synthesis is a fallback, used for cards you write yourself.
 
 Files rather than the Web Speech API, because the API is not everywhere: the
 Telegram desktop client embeds a WebKitGTK build with no `speechSynthesis` at
 all, so a browser voice can never reach that screen.
 
-Re-render with [scripts/generate-audio.ts](scripts/generate-audio.ts), which
-only fills gaps unless `--force` is passed:
+Most clips come from OpenAI's `gpt-4o-mini-tts`, which takes an `instructions`
+field and is told to read one clean mora with the romaji spelled out for it.
+The rest are earlier ElevenLabs renders that came out well. Both engines live
+behind one interface in
+[scripts/generate-audio.ts](scripts/generate-audio.ts), along with the failure
+modes of each — a sentence-level model given a bare mora will improvise, and
+that is worth knowing before choosing one.
 
 ```bash
-set -a; . ~/.secrets/elevenlabs.env; set +a
-bun run scripts/generate-audio.ts
+set -a; . ~/.secrets/openai.env; set +a
+bun run scripts/generate-audio.ts --missing     # fill the gaps
+bun run scripts/generate-audio.ts --only=は,を  # spot fixes
+```
+
+Nothing here is trustworthy until it is checked. `verify-audio.py` transcribes
+every clip and compares pronunciation, and `audio-review.ts` builds a page for
+listening through them and flagging the bad ones:
+
+```bash
+uv run --with openai-whisper --with numpy --with pykakasi \
+    python scripts/verify-audio.py
+bun run scripts/audio-review.ts && bun run scripts/serve-review.ts
 ```
 
 ## Telegram Mini App
