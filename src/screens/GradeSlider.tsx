@@ -6,13 +6,13 @@ import { haptics } from "../lib/telegram";
 const THUMB = 44; // px, also the track padding for the thumb travel
 
 const SHORT_LABELS: Record<Grade, string> = {
-  0: "no recall",
-  1: "barely",
+  0: "could not recall it",
+  1: "had some ideas, but no",
   2: "very close",
-  3: "knew it, barely",
-  4: "hesitated",
-  5: "easy",
-  6: "know it — retire card",
+  3: "recalled it, with effort",
+  4: "recalled it, after a pause",
+  5: "recalled it easily",
+  6: "know it, retire the card",
 };
 
 const band = (g: Grade) => (g < 3 ? "fail" : g === 3 ? "mid" : g < 6 ? "pass" : "retire");
@@ -140,9 +140,9 @@ export function GradeSlider({
         />
       </div>
       <div className="sb-slider-ends" aria-hidden="true">
-        <span>0 · blank</span>
+        <span>0 · no recall</span>
         <span>release to grade</span>
-        <span>know it · 6</span>
+        <span>6 · retire</span>
       </div>
       {suggestion && (
         <p className="sb-slider-hint" data-pace={suggestion.pace}>

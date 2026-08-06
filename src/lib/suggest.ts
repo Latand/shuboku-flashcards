@@ -121,19 +121,23 @@ function seconds(thinkMs: number): string {
 function phrase(pace: Pace, kind: Familiarity): string {
   switch (pace) {
     case "stalled":
-      return "over a minute · middle grade";
+      return "over a minute, so the timing says nothing";
     case "reflex":
-      return "revealed instantly · grade it yourself";
+      return "revealed instantly, so the timing says nothing";
     case "quick":
       return kind === "hard"
-        ? "faster than this card used to be"
+        ? "faster than this card usually takes you"
         : kind === "new"
-          ? "quick for a first meeting"
-          : "quick, the way it usually goes";
+          ? "fast for a card you have not seen before"
+          : "faster than you usually recall";
     case "effort":
-      return kind === "hard" ? "slow again, still a hard one" : "a long pause before the answer";
+      return kind === "hard"
+        ? "slow again, as this card usually is"
+        : "slower than you usually recall";
     case "steady":
-      return kind === "hard" ? "still takes real effort" : "your usual recall pace";
+      return kind === "hard"
+        ? "about as slow as this card usually is"
+        : "about how long you usually take";
   }
 }
 

@@ -74,7 +74,7 @@ describe("suggesting a grade from the pause", () => {
     const s = suggestGrade({ thinkMs: 61_000, state: afterGrades([5, 5]), baselineMs });
     expect(s.grade).toBe(3);
     expect(s.pace).toBe("stalled");
-    expect(s.hint).toBe("over a minute · middle grade");
+    expect(s.hint).toBe("over a minute, so the timing says nothing");
   });
 
   test("an easy card answered fast opens on a confident grade", () => {
@@ -88,14 +88,14 @@ describe("suggesting a grade from the pause", () => {
     const s = suggestGrade({ thinkMs: 2000, state: afterGrades([3]), baselineMs });
     expect(s.familiarity).toBe("hard");
     expect(s.grade).toBe(4);
-    expect(s.hint).toContain("faster than this card used to be");
+    expect(s.hint).toContain("faster than this card usually takes you");
   });
 
   test("a long pause under a minute hints that it was hard", () => {
     const s = suggestGrade({ thinkMs: 30_000, state: afterGrades([3]), baselineMs });
     expect(s.grade).toBe(3);
     expect(s.pace).toBe("effort");
-    expect(s.hint).toContain("still a hard one");
+    expect(s.hint).toContain("as this card usually is");
   });
 
   test("a hard card at its usual pace stays at the middle grade", () => {
