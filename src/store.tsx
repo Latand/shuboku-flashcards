@@ -27,7 +27,7 @@ import {
 } from "./lib/storage";
 import {
   cloudLoad,
-  cloudSaveDebounced,
+  cloudSync,
   initTelegram,
   isTelegram,
   telegramUserName,
@@ -128,7 +128,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       const json = saveStore(store);
-      cloudSaveDebounced(json); // Telegram CloudStorage sync, no-op elsewhere
+      cloudSync(json); // Telegram CloudStorage, no-op elsewhere
     }, 250);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -491,7 +491,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     importJson: (json) => {
       const parsed = parseImport(json);
       setStore(parsed);
-      cloudSaveDebounced(saveStore(parsed));
+      cloudSync(saveStore(parsed));
     },
 
     resetProfileProgress: () =>

@@ -203,30 +203,137 @@ export async function cloudLoad(): Promise<string | null> {
   }
 }
 
-async function cloudSaveNow(json: string): Promise<void> {
-  if (!cloud()) return;
+/*
+ * Only the chunks that actually changed are written.
+ *
+ * A full collection with its grade history runs to roughly half a megabyte —
+ * some 130 chunks — and rewriting all of them after every card would be both
+ * slow and a good way to meet Telegram's rate limits. Grading one card changes
+ * one or two chunks, so the fingerprints of what was last written are kept and
+ * only the differences go up.
+ */
+
+/** Telegram allows 1024 keys per user; stay well under, and say so if we don't. */
+const MAX_CHUNKS = 900;
+const DIGEST_KEY = "sb:cloud-digests";
+/** CloudStorage round-trips are slow; a session of grading should not queue up. */
+const MIN_INTERVAL_MS = 20_000;
+
+/** Cheap 32-bit fingerprint — enough to tell one chunk's contents from another. */
+function digest(text: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+export function chunkDigests(parts: readonly string[]): number[] {
+  return parts.map(digest);
+}
+
+/** Which chunks differ from what the cloud was last told. */
+export function changedIndexes(wanted: readonly number[], previous: readonly number[]): number[] {
+  return wanted.map((_, i) => i).filter((i) => wanted[i] !== previous[i]);
+}
+
+function readDigests(): number[] {
   try {
-    const parts = splitChunks(json);
-    await Promise.all(parts.map((p, i) => setItem(KEY_PREFIX + i, p)));
-    await setItem(KEY_COUNT, String(parts.length));
-    // Drop chunks left over from a previously larger store.
-    const prev = Number(sessionStorage.getItem("sb:cloud-chunks") ?? 0);
-    if (prev > parts.length) {
-      await removeItems(
-        Array.from({ length: prev - parts.length }, (_, i) => KEY_PREFIX + (parts.length + i))
-      );
-    }
-    sessionStorage.setItem("sb:cloud-chunks", String(parts.length));
+    const raw = localStorage.getItem(DIGEST_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    /* offline or quota — localStorage still has everything */
+    return [];
   }
 }
 
-let cloudTimer: ReturnType<typeof setTimeout> | null = null;
+export interface CloudSyncResult {
+  written: number;
+  total: number;
+  skipped: boolean;
+  error?: string;
+}
 
-/** Debounced cloud sync — CloudStorage round-trips are slow, batch them. */
-export function cloudSaveDebounced(json: string): void {
+async function cloudSaveNow(json: string): Promise<CloudSyncResult> {
+  const parts = splitChunks(json);
+  if (!cloud()) return { written: 0, total: parts.length, skipped: true };
+  if (parts.length > MAX_CHUNKS) {
+    return {
+      written: 0,
+      total: parts.length,
+      skipped: true,
+      error: `store needs ${parts.length} cloud keys, over the ${MAX_CHUNKS} this app will use`,
+    };
+  }
+  try {
+    const previous = readDigests();
+    const wanted = chunkDigests(parts);
+    const changed = changedIndexes(wanted, previous);
+
+    for (const i of changed) await setItem(KEY_PREFIX + i, parts[i]);
+    if (previous.length !== parts.length) await setItem(KEY_COUNT, String(parts.length));
+    // Drop chunks left over from a previously larger store.
+    if (previous.length > parts.length) {
+      await removeItems(
+        Array.from({ length: previous.length - parts.length }, (_, i) => KEY_PREFIX + (parts.length + i))
+      );
+    }
+    localStorage.setItem(DIGEST_KEY, JSON.stringify(wanted));
+    return { written: changed.length, total: parts.length, skipped: false };
+  } catch (e) {
+    // Offline, throttled or out of quota. localStorage still has everything,
+    // and the fingerprints are left untouched so the next attempt retries.
+    return { written: 0, total: parts.length, skipped: false, error: String(e).slice(0, 120) };
+  }
+}
+
+let pendingJson: string | null = null;
+let cloudTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSyncAt = 0;
+let lastResult: CloudSyncResult | null = null;
+
+export function lastCloudSync(): CloudSyncResult | null {
+  return lastResult;
+}
+
+async function flush(): Promise<void> {
+  const json = pendingJson;
+  if (!json || !cloud()) return;
+  pendingJson = null;
+  lastSyncAt = Date.now();
+  lastResult = await cloudSaveNow(json);
+  // A failed write leaves the content pending so the next flush retries it.
+  if (lastResult.error && !pendingJson) pendingJson = json;
+}
+
+/**
+ * Queues the store for the cloud. Writes are spaced out rather than debounced:
+ * a long session should still reach the cloud regularly, not only when it ends.
+ */
+export function cloudSync(json: string): void {
   if (!cloud()) return;
-  if (cloudTimer) clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(() => void cloudSaveNow(json), 1500);
+  pendingJson = json;
+  if (cloudTimer) return;
+  const wait = Math.max(0, MIN_INTERVAL_MS - (Date.now() - lastSyncAt));
+  cloudTimer = setTimeout(() => {
+    cloudTimer = null;
+    void flush();
+  }, wait);
+}
+
+/** Pushes whatever is pending right away — for a closing or backgrounded app. */
+export function cloudFlushNow(): void {
+  if (cloudTimer) {
+    clearTimeout(cloudTimer);
+    cloudTimer = null;
+  }
+  void flush();
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") cloudFlushNow();
+  });
+  window.addEventListener("pagehide", cloudFlushNow);
 }
