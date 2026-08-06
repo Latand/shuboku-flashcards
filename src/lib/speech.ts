@@ -108,15 +108,48 @@ export function startVoiceDiscovery(): void {
 
 let playing: HTMLAudioElement | null = null;
 
+/*
+ * Clips come from a CDN, so the first play of a card waited on a round trip —
+ * long enough to feel like the button was broken. The queue is known in
+ * advance, so the cards about to come up are fetched while the current one is
+ * still on screen and kept ready.
+ */
+const warmed = new Map<string, HTMLAudioElement>();
+/** Roughly two sessions' worth of clips, at some 8 KB each. */
+const WARM_LIMIT = 60;
+
+export function warmClips(readings: readonly (string | undefined)[]): void {
+  if (typeof Audio === "undefined") return;
+  for (const text of readings) {
+    if (!text || !AUDIO_READINGS.has(text) || warmed.has(text)) continue;
+    try {
+      const audio = new Audio();
+      audio.preload = "auto";
+      audio.src = audioUrl(text);
+      audio.load();
+      warmed.set(text, audio);
+    } catch {
+      /* the card still plays, just without the head start */
+    }
+  }
+  for (const stale of [...warmed.keys()].slice(0, Math.max(0, warmed.size - WARM_LIMIT))) {
+    warmed.get(stale)?.pause();
+    warmed.delete(stale);
+  }
+}
+
 /** Plays the rendered reading. Returns false when this card has no clip. */
 function playClip(text: string): boolean {
   if (!AUDIO_READINGS.has(text) || typeof Audio === "undefined") return false;
   try {
-    playing?.pause();
-    playing = new Audio(audioUrl(text));
+    if (playing && playing !== warmed.get(text)) playing.pause();
+    const clip = warmed.get(text) ?? new Audio(audioUrl(text));
+    warmed.set(text, clip);
+    playing = clip;
+    clip.currentTime = 0;
     // Autoplay can be refused before the first tap; the browser voice, where
     // one exists, is a better outcome than silence.
-    playing.play().catch(() => speakWithSynthesis(text));
+    clip.play().catch(() => speakWithSynthesis(text));
     return true;
   } catch {
     return false;

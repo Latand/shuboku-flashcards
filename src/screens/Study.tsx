@@ -4,7 +4,7 @@ import type { Card } from "../data/packs";
 import { fmtNextReview } from "../lib/insights";
 import { GRADES, type Grade } from "../lib/scheduler";
 import { baselineThinkMs, suggestGrade } from "../lib/suggest";
-import { useJapaneseVoice } from "../lib/speech";
+import { useJapaneseVoice, warmClips } from "../lib/speech";
 import { haptics, setClosingConfirmation } from "../lib/telegram";
 import { useApp } from "../store";
 import { GradeSlider } from "./GradeSlider";
@@ -141,6 +141,12 @@ export function Study({
   const current = queue.length ? cardsById[queue[0]] : null;
   const uniqueLeft = useMemo(() => new Set(queue).size, [queue]);
   const pct = total ? Math.round(((total - uniqueLeft) / total) * 100) : 0;
+
+  // Fetch the clips for the cards about to come up, so pressing "hear it"
+  // never waits on the network.
+  useEffect(() => {
+    warmClips(queue.slice(0, 8).map((id) => cardsById[id]?.speak));
+  }, [queue, cardsById]);
 
   const sayCurrent = useCallback(() => {
     if (current) speak(current.speak);
