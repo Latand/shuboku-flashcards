@@ -7,7 +7,7 @@
  * copy out as a plain list, which is what a re-render needs as input.
  */
 
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { BUILTIN_DECKS } from "../src/data/packs";
 import { audioKey } from "../src/lib/audio";
 
@@ -18,26 +18,39 @@ interface Item {
   hint: string;
 }
 
-const decks = BUILTIN_DECKS.map((deck) => ({
+/** --list=<json array of readings> narrows the sheet to just those. */
+const listArg = process.argv.find((a) => a.startsWith("--list="))?.slice(7);
+const wanted: Set<string> | null = listArg
+  ? new Set(JSON.parse(await readFile(listArg, "utf8")) as string[])
+  : null;
+/** --heard=<json map reading→transcript> shows what a recogniser made of each. */
+const heardArg = process.argv.find((a) => a.startsWith("--heard="))?.slice(8);
+const heard: Record<string, string> = heardArg
+  ? JSON.parse(await readFile(heardArg, "utf8"))
+  : {};
+
+const decksAll = BUILTIN_DECKS.map((deck) => ({
   id: deck.id,
   jp: deck.jp,
   name: deck.name,
   script: deck.script,
   items: deck.cards
-    .filter((c) => c.speak)
+    .filter((c) => c.speak && (!wanted || wanted.has(c.speak)))
     .map((card): Item => ({
       key: audioKey(card.speak!),
       char: card.char,
       reading: card.speak!,
       hint:
-        card.type === "kana"
+        (heard[card.speak!] ? `heard: ${heard[card.speak!]} · ` : "") +
+        (card.type === "kana"
           ? card.romaji
           : card.type === "kanji"
             ? `${card.meaning} · 訓 ${card.kun} · 音 ${card.on}`
-            : "",
+            : ""),
     })),
 }));
 
+const decks = decksAll.filter((d) => d.items.length);
 const total = decks.reduce((n, d) => n + d.items.length, 0);
 
 const html = `<!doctype html>
