@@ -21,8 +21,8 @@ browser's `localStorage`.
   between devices as JSON.
 - **Review sessions** — a focused card panel, 0–6 grading with color-coded
   bands, a grade suggested from how long the recall took, "next review in …"
-  feedback after every grade, speech synthesis, kana↔romaji direction toggle,
-  optional 60-second auto-reveal, keyboard shortcuts.
+  feedback after every grade, audio for every reading, kana↔romaji direction
+  toggle, optional 60-second auto-reveal, keyboard shortcuts.
 - **Streak** — consecutive review days (current and best) tracked per profile.
 - **Deck pausing** — pause a deck without losing its schedule, resume any time
   (the bot's "pause block learning").
@@ -88,6 +88,25 @@ The scheduler uses the open-source
 [FSRS-6](https://github.com/open-spaced-repetition/awesome-fsrs/wiki/The-Algorithm).
 The rationale and compatibility invariants are recorded in
 [ALGORITHM.md](ALGORITHM.md).
+
+## Audio
+
+Every built-in reading ships as an audio file under `public/audio/`, named
+after the reading's codepoints — 314 clips, 2.8 MB, about four and a half
+minutes of speech. The browser's own speech synthesis is a fallback, used for
+cards you write yourself.
+
+Files rather than the Web Speech API, because the API is not everywhere: the
+Telegram desktop client embeds a WebKitGTK build with no `speechSynthesis` at
+all, so a browser voice can never reach that screen.
+
+Re-render with [scripts/generate-audio.ts](scripts/generate-audio.ts), which
+only fills gaps unless `--force` is passed:
+
+```bash
+set -a; . ~/.secrets/elevenlabs.env; set +a
+bun run scripts/generate-audio.ts
+```
 
 ## Telegram Mini App
 

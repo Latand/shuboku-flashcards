@@ -1,7 +1,14 @@
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
+import { AUDIO_READINGS } from "../data/audio-index";
+import { audioUrl } from "./audio";
 
 /*
  * Japanese speech.
+ *
+ * Every built-in reading ships as an audio file, so the sound button works
+ * where there is no speech engine at all — the Telegram desktop client embeds
+ * a WebKitGTK build with no `window.speechSynthesis`. Files win when one
+ * exists; a card you wrote yourself still goes through the browser voice.
  *
  * Voice lists arrive late and unevenly. A Linux desktop publishing every
  * espeak variant through speech-dispatcher hands the browser some fifteen
@@ -99,9 +106,32 @@ export function startVoiceDiscovery(): void {
   look();
 }
 
+let playing: HTMLAudioElement | null = null;
+
+/** Plays the rendered reading. Returns false when this card has no clip. */
+function playClip(text: string): boolean {
+  if (!AUDIO_READINGS.has(text) || typeof Audio === "undefined") return false;
+  try {
+    playing?.pause();
+    playing = new Audio(audioUrl(text));
+    // Autoplay can be refused before the first tap; the browser voice, where
+    // one exists, is a better outcome than silence.
+    playing.play().catch(() => speakWithSynthesis(text));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function speakJapanese(text: string | undefined): void {
+  if (!text) return;
+  if (playClip(text)) return;
+  speakWithSynthesis(text);
+}
+
+function speakWithSynthesis(text: string): void {
   const synth = synthesis();
-  if (!text || !synth) return;
+  if (!synth) return;
   try {
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -135,11 +165,16 @@ const snapshot = () => status;
 
 export function useJapaneseVoice() {
   const current = useSyncExternalStore(subscribe, snapshot, snapshot);
+  const engineWorks = !!synthesis() && !current.failed;
   return {
     speak: speakJapanese,
-    /** a Japanese voice was found; without one the engine still reads the text */
-    hasVoice: !!current.voice,
-    /** nothing can be spoken here: no engine, or an utterance already failed */
-    unavailable: !synthesis() || current.failed,
+    /**
+     * Whether this particular reading can be heard: it has a rendered clip, or
+     * the browser has an engine that has not already failed.
+     */
+    canSpeak: useCallback(
+      (text: string | undefined) => !!text && (AUDIO_READINGS.has(text) || engineWorks),
+      [engineWorks]
+    ),
   };
 }

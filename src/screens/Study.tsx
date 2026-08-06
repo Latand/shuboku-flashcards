@@ -99,7 +99,7 @@ export function Study({
   onDone: (r: SessionResult) => void;
 }) {
   const { cardsById, gradeCard, undoGrade, profile } = useApp();
-  const { speak, unavailable: noSpeech } = useJapaneseVoice();
+  const { speak, canSpeak } = useJapaneseVoice();
   const { reverse, autoSound, autoFlip } = profile.settings;
 
   const [queue, setQueue] = useState<string[]>(initialQueue);
@@ -318,10 +318,10 @@ export function Study({
                   <button
                     className="sb-btn sb-sound"
                     onClick={sayCurrent}
-                    disabled={noSpeech}
+                    disabled={!canSpeak(current.speak)}
                   >
                     <Volume2 size={14} />
-                    {noSpeech ? "no voice" : "hear it"}
+                    {canSpeak(current.speak) ? "hear it" : "no voice"}
                   </button>
                 </div>
               </>
@@ -332,10 +332,10 @@ export function Study({
                   <button
                     className="sb-btn sb-sound"
                     onClick={sayCurrent}
-                    disabled={noSpeech}
+                    disabled={!canSpeak(current.speak)}
                   >
                     <Volume2 size={14} />
-                    {noSpeech ? "no voice" : "hear it"}
+                    {canSpeak(current.speak) ? "hear it" : "no voice"}
                   </button>
                 </div>
               </>
