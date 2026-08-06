@@ -121,6 +121,27 @@ export function compareWeakness(a: CardState | undefined, b: CardState | undefin
   return a.interval - b.interval;
 }
 
+/**
+ * Hardest first, for practice outside the schedule.
+ *
+ * Weakness sorting in the browser is about what to worry over next; this is
+ * about which cards fight back. The memory model's own difficulty estimate
+ * leads, because it is exactly that judgement, with the last grade and the
+ * number of lapses breaking ties for cards it rates the same.
+ */
+export function compareHardest(a: CardState | undefined, b: CardState | undefined): number {
+  const difficulty = (s?: CardState) => s?.difficulty ?? 0;
+  if (difficulty(a) !== difficulty(b)) return difficulty(b) - difficulty(a);
+  const grade = (s?: CardState) => s?.lastGrade ?? 6;
+  if (grade(a) !== grade(b)) return grade(a) - grade(b);
+  return (b?.lapses ?? 0) - (a?.lapses ?? 0);
+}
+
+/** A card can be practised once it has been studied and is still in rotation. */
+export function isPractisable(state: CardState | undefined): boolean {
+  return !!state && !state.retired && state.totalRepetitions > 0;
+}
+
 /* ---- last-grade progress bar (ported from the bot's statistics handler) ---- */
 
 export function gradeBar(grade: number): { filled: number; tone: "bad" | "middle" | "good" } {

@@ -5,6 +5,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Dumbbell,
   Flame,
   HelpCircle,
   Pause,
@@ -42,6 +43,8 @@ export function Home({ go }: { go: (s: Screen) => void }) {
     togglePaused,
     setSettings,
     collectAndBuildQueue,
+    buildPracticeQueue,
+    practisableCount,
     nextDeckToLearn,
     dueTomorrow,
   } = app;
@@ -111,6 +114,14 @@ export function Home({ go }: { go: (s: Screen) => void }) {
   const nextDeck = nextDeckToLearn();
   const tomorrow = dueTomorrow();
   const firstRun = collectedDecks.length === 0;
+
+  const practisable = practisableCount();
+  const practise = () => {
+    const queue = buildPracticeQueue();
+    if (!queue.length) return;
+    haptics.impact("medium");
+    go({ name: "study", queue });
+  };
 
   const learnDeck = (deckId: string) => {
     haptics.impact("medium");
@@ -512,6 +523,11 @@ export function Home({ go }: { go: (s: Screen) => void }) {
             ) : (
               <button className="sb-btn sb-start" disabled>
                 All caught up
+              </button>
+            )}
+            {practisable > 0 && (
+              <button className="sb-btn sb-act" data-ghost="true" onClick={practise}>
+                <Dumbbell size={13} /> Drill the hardest · {Math.min(practisable, settings.limit === 0 ? 20 : settings.limit)} at random
               </button>
             )}
             {sessionDue === 0 && tomorrow > 0 && (

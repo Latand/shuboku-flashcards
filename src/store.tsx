@@ -10,6 +10,7 @@ import {
 } from "react";
 import { BUILTIN_BY_ID, BUILTIN_DECKS, type Card, type Deck } from "./data/packs";
 import { isDue, newCardState, review, type CardState, type Grade } from "./lib/scheduler";
+import { compareHardest, isPractisable } from "./lib/insights";
 import { rememberThinkTime } from "./lib/suggest";
 import {
   loadStore,
@@ -48,6 +49,10 @@ export interface AppApi {
   cardState: (cardId: string) => CardState | undefined;
   /** shuffled due cards from all active decks, capped by the session limit */
   buildSessionQueue: () => string[];
+  /** a random handful of your hardest cards, due or not; graded like any review */
+  buildPracticeQueue: (size?: number) => string[];
+  /** how many cards are eligible for practice at all */
+  practisableCount: () => number;
   /** total due cards right now across active decks (uncapped) */
   dueNow: () => number;
   /** cards coming due between now and the end of tomorrow */
@@ -270,6 +275,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       const { limit } = profile.settings;
       return due.slice(0, limit === 0 ? due.length : limit);
+    },
+
+    practisableCount: () => {
+      const seen = new Set<string>();
+      let n = 0;
+      for (const deck of collectedDecks)
+        for (const c of deck.cards)
+          if (!seen.has(c.id) && (seen.add(c.id), isPractisable(profile.cards[c.id]))) n++;
+      return n;
+    },
+
+    /**
+     * An extra session drawn at random from the cards you find hardest, for
+     * when nothing is due yet. These count as ordinary reviews — recalling one
+     * early earns its longer interval, missing one costs the same as always —
+     * so the queue is the only thing that differs from a scheduled session.
+     *
+     * Retired cards and ones never studied stay out: neither is hard, they are
+     * just absent.
+     */
+    buildPracticeQueue: (size) => {
+      const wanted = size ?? (profile.settings.limit === 0 ? 20 : profile.settings.limit);
+      const seen = new Set<string>();
+      const eligible: string[] = [];
+      for (const deck of collectedDecks) {
+        for (const c of deck.cards) {
+          if (seen.has(c.id)) continue;
+          seen.add(c.id);
+          if (isPractisable(profile.cards[c.id])) eligible.push(c.id);
+        }
+      }
+      eligible.sort((a, b) => compareHardest(profile.cards[a], profile.cards[b]));
+      // Draw from a pool wider than the session, or every session would be
+      // the same cards in the same order.
+      const pool = eligible.slice(0, Math.max(30, wanted * 3));
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return pool.slice(0, wanted);
     },
 
     dueNow: () => {

@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { DAY_MS } from "./scheduler";
+import { DAY_MS, type CardState } from "./scheduler";
 import { todayKey } from "./storage";
 import {
   aggregates,
+  compareHardest,
   compareWeakness,
+  isPractisable,
   computeStreak,
   fmtNextReview,
   gradeBar,
@@ -97,5 +99,48 @@ describe("ranks and grade bar", () => {
     expect(gradeBar(2)).toEqual({ filled: 2, tone: "bad" });
     expect(gradeBar(3)).toEqual({ filled: 3, tone: "middle" });
     expect(gradeBar(5)).toEqual({ filled: 5, tone: "good" });
+  });
+});
+
+describe("choosing what to practise", () => {
+  const card = (over: Partial<CardState>): CardState => ({
+    nRepetitions: 2,
+    easinessFactor: 2.5,
+    interval: 5,
+    intervalStart: 0,
+    timeToReview: 0,
+    totalRepetitions: 4,
+    lastGrade: 4,
+    retired: false,
+    ...over,
+  });
+
+  test("only cards you have actually studied and still keep in rotation", () => {
+    expect(isPractisable(undefined)).toBe(false);
+    expect(isPractisable(card({ totalRepetitions: 0 }))).toBe(false);
+    expect(isPractisable(card({ retired: true }))).toBe(false);
+    expect(isPractisable(card({}))).toBe(true);
+  });
+
+  test("the model's difficulty decides before anything else", () => {
+    const hard = card({ difficulty: 8.2, lastGrade: 5 });
+    const easy = card({ difficulty: 2.1, lastGrade: 3 });
+    expect([easy, hard].sort(compareHardest)[0]).toBe(hard);
+  });
+
+  test("cards it rates the same are separated by the last grade, then lapses", () => {
+    const struggled = card({ difficulty: 5, lastGrade: 3 });
+    const fine = card({ difficulty: 5, lastGrade: 5 });
+    expect([fine, struggled].sort(compareHardest)[0]).toBe(struggled);
+
+    const lapsed = card({ difficulty: 5, lastGrade: 4, lapses: 6 });
+    const clean = card({ difficulty: 5, lastGrade: 4, lapses: 0 });
+    expect([clean, lapsed].sort(compareHardest)[0]).toBe(lapsed);
+  });
+
+  test("legacy cards without a difficulty estimate sort behind rated ones", () => {
+    const rated = card({ difficulty: 3 });
+    const legacy = card({});
+    expect([legacy, rated].sort(compareHardest)[0]).toBe(rated);
   });
 });

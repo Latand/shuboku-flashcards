@@ -23,6 +23,9 @@ browser's `localStorage`.
   bands, a grade suggested from how long the recall took, "next review in …"
   feedback after every grade, audio for every reading, kana↔romaji direction
   toggle, optional 60-second auto-reveal, keyboard shortcuts.
+- **Drill the hardest** — when nothing is due, pull a random handful from the
+  cards you struggle with most. They are graded like any review: an early
+  recall earns a longer interval, a miss brings the card straight back.
 - **Streak** — consecutive review days (current and best) tracked per profile.
 - **Deck pausing** — pause a deck without losing its schedule, resume any time
   (the bot's "pause block learning").
