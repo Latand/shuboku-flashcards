@@ -1,7 +1,7 @@
 import { ArrowLeft, Flame } from "lucide-react";
 import type { Screen } from "../App";
 import { aggregates, compareWeakness, computeStreak, rankAmong } from "../lib/insights";
-import { DAY_MS, isDue } from "../lib/sm2";
+import { DAY_MS, isDue, recallProbability } from "../lib/scheduler";
 import { todayKey } from "../lib/storage";
 import { useApp } from "../store";
 
@@ -218,8 +218,10 @@ export function Stats({ go }: { go: (s: Screen) => void }) {
                           : card.back}
                     </span>
                     <span className="sb-row-sub" style={{ display: "block" }}>
-                      {s.totalRepetitions} reps · last grade {s.lastGrade} · EF{" "}
-                      {s.easinessFactor.toFixed(2)}
+                      {s.totalRepetitions} reps · last grade {s.lastGrade}
+                      {s.difficulty != null && ` · difficulty ${s.difficulty.toFixed(1)}`}
+                      {recallProbability(s, now) != null &&
+                        ` · ${Math.round(recallProbability(s, now)! * 100)}% recall`}
                     </span>
                   </span>
                 </div>

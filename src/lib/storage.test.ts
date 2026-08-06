@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DAY_MS } from "./sm2";
+import { DAY_MS } from "./scheduler";
 import { migrateLegacyProgress, newProfile, parseImport, newStore } from "./storage";
 
 const NOW = Date.UTC(2026, 7, 1);
@@ -40,5 +40,28 @@ describe("import validation", () => {
     expect(back.activeProfileId).toBe(store.activeProfileId);
     expect(() => parseImport('{"version":1}')).toThrow();
     expect(() => parseImport("not json")).toThrow();
+  });
+
+  test("backfills the scheduler retention target in older v2 exports", () => {
+    const store = newStore(NOW);
+    const profile = store.profiles[store.activeProfileId];
+    delete (profile.settings as Partial<typeof profile.settings>).desiredRetention;
+
+    const back = parseImport(JSON.stringify(store));
+    expect(back.profiles[back.activeProfileId].settings.desiredRetention).toBe(0.9);
+  });
+
+  test("sanitizes imported retention targets", () => {
+    const store = newStore(NOW);
+    const settings = store.profiles[store.activeProfileId].settings;
+    settings.desiredRetention = 9;
+    expect(
+      parseImport(JSON.stringify(store)).profiles[store.activeProfileId].settings.desiredRetention
+    ).toBe(0.97);
+
+    (settings as unknown as { desiredRetention: unknown }).desiredRetention = "high";
+    expect(
+      parseImport(JSON.stringify(store)).profiles[store.activeProfileId].settings.desiredRetention
+    ).toBe(0.9);
   });
 });

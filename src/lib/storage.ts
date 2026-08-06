@@ -1,6 +1,14 @@
 import type { Card } from "../data/packs";
 import { BUILTIN_BY_ID, BUILTIN_DECKS } from "../data/packs";
-import { DAY_MS, newCardState, type CardState, type Grade } from "./sm2";
+import {
+  DAY_MS,
+  DEFAULT_DESIRED_RETENTION,
+  MAX_DESIRED_RETENTION,
+  MIN_DESIRED_RETENTION,
+  newCardState,
+  type CardState,
+  type Grade,
+} from "./scheduler";
 
 export const STORE_KEY = "shuboku:v2";
 export const LEGACY_KEY = "shuboku:v1:progress";
@@ -18,6 +26,8 @@ export interface Settings {
   limit: number;
   /** reveal the answer automatically after 60 s (the bot flipped stale cards) */
   autoFlip: boolean;
+  /** target probability of recall when a card becomes due */
+  desiredRetention: number;
 }
 
 export interface Profile {
@@ -34,6 +44,8 @@ export interface Profile {
   customDecks: Record<string, CustomDeckDef>;
   /** 'YYYY-MM-DD' → number of reviews that day */
   reviewLog: Record<string, number>;
+  /** recent successful recall pauses in ms — the baseline for grade suggestions */
+  recallTimes: number[];
   settings: Settings;
 }
 
@@ -50,6 +62,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoSound: true,
   limit: 20,
   autoFlip: false,
+  desiredRetention: DEFAULT_DESIRED_RETENTION,
 };
 
 export function uid(): string {
@@ -69,6 +82,7 @@ export function newProfile(name: string, now: number): Profile {
     customCards: {},
     customDecks: {},
     reviewLog: {},
+    recallTimes: [],
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -131,8 +145,16 @@ export function normalizeStore(store: Store): Store {
     const p: Profile = {
       ...store.profiles[id],
       paused: store.profiles[id].paused ?? [],
+      recallTimes: (store.profiles[id].recallTimes ?? []).filter(
+        (ms) => typeof ms === "number" && Number.isFinite(ms)
+      ),
       settings: { ...DEFAULT_SETTINGS, ...store.profiles[id].settings },
     };
+    const desiredRetention = p.settings.desiredRetention;
+    p.settings.desiredRetention =
+      typeof desiredRetention === "number" && Number.isFinite(desiredRetention)
+        ? Math.min(MAX_DESIRED_RETENTION, Math.max(MIN_DESIRED_RETENTION, desiredRetention))
+        : DEFAULT_DESIRED_RETENTION;
     // Invariant: every card of a collected deck has repetition state,
     // otherwise it could never become due.
     for (const deckId of p.collection) {

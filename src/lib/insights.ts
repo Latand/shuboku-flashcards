@@ -1,4 +1,4 @@
-import { DAY_MS, type CardState } from "./sm2";
+import { DAY_MS, type CardState } from "./scheduler";
 import { todayKey } from "./storage";
 
 /* ---- daily streak ---- */

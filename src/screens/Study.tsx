@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Eye, Shuffle, Volume2 } from "lucide-react";
 import type { Card } from "../data/packs";
 import { fmtNextReview } from "../lib/insights";
-import { GRADES, type Grade } from "../lib/sm2";
+import { GRADES, type Grade } from "../lib/scheduler";
+import { baselineThinkMs, suggestGrade } from "../lib/suggest";
 import { useJapaneseVoice } from "../lib/speech";
 import { haptics, setClosingConfirmation } from "../lib/telegram";
 import { useApp } from "../store";
@@ -104,6 +105,10 @@ export function Study({
   const [queue, setQueue] = useState<string[]>(initialQueue);
   const [open, setOpen] = useState(false);
   const [tally, setTally] = useState({ reviewed: 0, again: 0, retired: 0 });
+  // The pause between seeing the card and asking for the answer: the evidence
+  // behind the grade the slider opens on.
+  const shownAt = useRef(Date.now());
+  const [thinkMs, setThinkMs] = useState<number | null>(null);
   const [toast, setToast] = useState<{
     text: string;
     key: number;
@@ -144,9 +149,30 @@ export function Study({
   const flip = useCallback(() => {
     if (open || !current) return;
     haptics.impact("light");
+    setThinkMs(Date.now() - shownAt.current);
     setOpen(true);
     if (autoSound) setTimeout(() => speak(current.speak), 130);
   }, [open, current, autoSound, speak]);
+
+  // The clock restarts on every card face-up moment — including a failed card
+  // coming back around later in the same session.
+  useEffect(() => {
+    if (open) return;
+    shownAt.current = Date.now();
+    setThinkMs(null);
+  }, [open, current?.id]);
+
+  const suggestion = useMemo(() => {
+    if (!open || thinkMs === null || !current) return null;
+    return suggestGrade({
+      thinkMs,
+      state: profile.cards[current.id],
+      baselineMs: baselineThinkMs(profile.recallTimes),
+    });
+    // The suggestion is fixed at the moment of the flip; grading it must not
+    // move it, so the card's own state is read once and not tracked here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, thinkMs, current?.id]);
 
   // Inside Telegram, guard an in-progress session against accidental closing.
   useEffect(() => {
@@ -169,10 +195,11 @@ export function Study({
       const cardId = current.id;
       const now = Date.now();
       const prev = profile.cards[cardId];
-      const next = gradeCard(cardId, grade, now);
+      const prevRecallTimes = profile.recallTimes;
+      const next = gradeCard(cardId, grade, now, thinkMs);
       const undo = () => {
         haptics.impact("rigid");
-        undoGrade(cardId, prev, now);
+        undoGrade(cardId, prev, now, prevRecallTimes);
         setTally((t) => ({
           reviewed: t.reviewed - 1,
           again: t.again - (grade < 3 ? 1 : 0),
@@ -206,7 +233,7 @@ export function Study({
       });
       setOpen(false);
     },
-    [current, gradeCard, undoGrade, profile, showToast, clearToast]
+    [current, gradeCard, undoGrade, profile, showToast, clearToast, thinkMs]
   );
 
   // The session ends when the queue empties — but while the undo toast is
@@ -300,7 +327,7 @@ export function Study({
               </>
             ) : (
               <>
-                <GradeSlider key={current.id} onCommit={answer} />
+                <GradeSlider key={current.id} suggestion={suggestion} onCommit={answer} />
                 <div>
                   <button
                     className="sb-btn sb-sound"

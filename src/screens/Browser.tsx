@@ -3,7 +3,7 @@ import { ArrowLeft, ArchiveRestore, Archive } from "lucide-react";
 import type { Screen } from "../App";
 import type { Card, Deck } from "../data/packs";
 import { compareWeakness, gradeBar } from "../lib/insights";
-import { DAY_MS, type CardState } from "../lib/sm2";
+import { DAY_MS, recallProbability, type CardState } from "../lib/scheduler";
 import { haptics } from "../lib/telegram";
 import { useApp } from "../store";
 
@@ -68,6 +68,13 @@ export function Browser({ go }: { go: (s: Screen) => void }) {
           ) : (
             <div className="sb-rows">
               {rows.map(({ card, deck, s }) => {
+                const recall = recallProbability(s, now);
+                const memory =
+                  s?.schedulerVersion === 1 && s.difficulty != null && s.stability != null
+                    ? `${recall == null ? "" : `${Math.round(recall * 100)}% recall · `}D ${s.difficulty.toFixed(1)} · S ${Math.round(s.stability)}d`
+                    : s?.lastGrade != null
+                      ? "0.1 schedule · upgrades on next review"
+                      : null;
                 const sub = s
                   ? `${
                       s.retired
@@ -75,7 +82,7 @@ export function Browser({ go }: { go: (s: Screen) => void }) {
                         : s.lastGrade === null
                           ? "new"
                           : `${s.interval}d interval · ${fmtNext(s.timeToReview, now)}`
-                    } · ${s.totalRepetitions} reps · EF ${s.easinessFactor.toFixed(2)} · ${deck.jp}`
+                    } · ${s.totalRepetitions} reps${memory ? ` · ${memory}` : ""} · ${deck.jp}`
                   : `never studied · ${deck.jp}`;
                 return (
                   <div className="sb-row" key={card.id} data-retired={!!s?.retired}>

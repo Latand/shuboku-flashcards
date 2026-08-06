@@ -17,7 +17,7 @@ import {
 import type { Screen } from "../App";
 import { SCRIPTS } from "../data/packs";
 import { computeStreak } from "../lib/insights";
-import { isDue } from "../lib/sm2";
+import { isDue } from "../lib/scheduler";
 import { haptics } from "../lib/telegram";
 import { useApp } from "../store";
 

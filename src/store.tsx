@@ -9,7 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { BUILTIN_BY_ID, BUILTIN_DECKS, type Card, type Deck } from "./data/packs";
-import { isDue, newCardState, review, type CardState, type Grade } from "./lib/sm2";
+import { isDue, newCardState, review, type CardState, type Grade } from "./lib/scheduler";
+import { rememberThinkTime } from "./lib/suggest";
 import {
   loadStore,
   logReview,
@@ -60,9 +61,15 @@ export interface AppApi {
   removeFromCollection: (deckId: string) => void;
   /** the bot's "pause block learning": keep the deck, skip its reviews */
   togglePaused: (deckId: string) => void;
-  gradeCard: (cardId: string, grade: Grade, now: number) => CardState;
-  /** revert an accidental grade: restore the pre-review state and the day log */
-  undoGrade: (cardId: string, prev: CardState | undefined, gradedAt: number) => void;
+  /** `thinkMs` is the pause before the answer was revealed — it feeds the baseline */
+  gradeCard: (cardId: string, grade: Grade, now: number, thinkMs?: number | null) => CardState;
+  /** revert an accidental grade: restore the pre-review state, day log and baseline */
+  undoGrade: (
+    cardId: string,
+    prev: CardState | undefined,
+    gradedAt: number,
+    prevRecallTimes?: number[]
+  ) => void;
   setRetired: (cardId: string, retired: boolean) => void;
 
   createCustomDeck: (name: string) => string;
@@ -335,16 +342,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : [...p.paused, deckId];
       }),
 
-    gradeCard: (cardId, grade, now) => {
-      const next = review(profile.cards[cardId] ?? newCardState(now), grade, now);
+    gradeCard: (cardId, grade, now, thinkMs) => {
+      const next = review(
+        profile.cards[cardId] ?? newCardState(now),
+        grade,
+        now,
+        profile.settings.desiredRetention
+      );
       patchProfile((p) => {
         p.cards[cardId] = next;
         logReview(p, now);
+        if (typeof thinkMs === "number") {
+          p.recallTimes = rememberThinkTime(p.recallTimes, thinkMs, grade);
+        }
       });
       return next;
     },
 
-    undoGrade: (cardId, prev, gradedAt) =>
+    undoGrade: (cardId, prev, gradedAt, prevRecallTimes) =>
       patchProfile((p) => {
         if (prev) p.cards[cardId] = prev;
         else delete p.cards[cardId];
@@ -352,6 +367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const n = (p.reviewLog[key] ?? 0) - 1;
         if (n > 0) p.reviewLog[key] = n;
         else delete p.reviewLog[key];
+        if (prevRecallTimes) p.recallTimes = prevRecallTimes;
       }),
 
     setRetired: (cardId, retired) =>
@@ -482,6 +498,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patchProfile((p) => {
         p.cards = {};
         p.reviewLog = {};
+        p.recallTimes = [];
         // Collected decks start over as brand-new cards, due immediately.
         const now = Date.now();
         for (const deckId of p.collection) {

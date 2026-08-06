@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { GRADES, type Grade } from "../lib/sm2";
+import { GRADES, type Grade } from "../lib/scheduler";
+import { NEUTRAL_GRADE, type Suggestion } from "../lib/suggest";
 import { haptics } from "../lib/telegram";
 
 const THUMB = 44; // px, also the track padding for the thumb travel
@@ -18,12 +19,21 @@ const band = (g: Grade) => (g < 3 ? "fail" : g === 3 ? "mid" : g < 6 ? "pass" : 
 
 /**
  * The grading control: drag the thumb and release — the grade where you
- * let go is the one that counts. Starts at 3 ("yes, but it was hard").
+ * let go is the one that counts. It opens on the grade suggested by how long
+ * the recall took, falling back to 3 ("yes, but it was hard") when the pause
+ * says nothing.
  */
-export function GradeSlider({ onCommit }: { onCommit: (g: Grade) => void }) {
+export function GradeSlider({
+  suggestion,
+  onCommit,
+}: {
+  suggestion?: Suggestion | null;
+  onCommit: (g: Grade) => void;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const committedRef = useRef(false);
-  const [pos, setPos] = useState(0.5); // 0..1 → grade 3 by default
+  const opensOn = suggestion?.grade ?? NEUTRAL_GRADE;
+  const [pos, setPos] = useState(opensOn / 6);
   const [dragging, setDragging] = useState(false);
   const grade = Math.round(pos * 6) as Grade;
 
@@ -67,7 +77,7 @@ export function GradeSlider({ onCommit }: { onCommit: (g: Grade) => void }) {
   const cancel = () => {
     if (committedRef.current) return;
     setDragging(false);
-    setPos(0.5);
+    setPos(opensOn / 6);
   };
 
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -116,7 +126,11 @@ export function GradeSlider({ onCommit }: { onCommit: (g: Grade) => void }) {
         />
         <div className="sb-slider-ticks" aria-hidden="true">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-            <i key={i} style={{ left: `calc(${i / 6} * ${travel} + ${THUMB / 2}px)` }} />
+            <i
+              key={i}
+              data-suggested={!!suggestion && i === opensOn}
+              style={{ left: `calc(${i / 6} * ${travel} + ${THUMB / 2}px)` }}
+            />
           ))}
         </div>
         <div
@@ -130,6 +144,11 @@ export function GradeSlider({ onCommit }: { onCommit: (g: Grade) => void }) {
         <span>release to grade</span>
         <span>know it · 6</span>
       </div>
+      {suggestion && (
+        <p className="sb-slider-hint" data-pace={suggestion.pace}>
+          {suggestion.hint}
+        </p>
+      )}
     </div>
   );
 }

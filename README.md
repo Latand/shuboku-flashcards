@@ -13,16 +13,16 @@ browser's `localStorage`.
   only collected packs feed the review queue.
 - **Custom decks** — write your own cards (front / back, optional reading and
   note). They study exactly like the built-in packs.
-- **Spaced repetition** — an SM-2 variant (ported from the SuperLearningBot
-  Telegram bot) schedules every card per profile. Due-count badges show what
-  needs review today.
+- **Spaced repetition** — a Shuboku 1.0 scheduler built on the FSRS-6 memory
+  model schedules every card per profile. Due-count badges show what needs
+  review today.
 - **Profiles** — several people can study on one device; each profile keeps
   its own collection, schedule and stats. Export/import moves everything
   between devices as JSON.
 - **Review sessions** — a focused card panel, 0–6 grading with color-coded
-  bands, "next review in …" feedback after every grade, speech synthesis,
-  kana↔romaji direction toggle, optional 60-second auto-reveal, keyboard
-  shortcuts.
+  bands, a grade suggested from how long the recall took, "next review in …"
+  feedback after every grade, speech synthesis, kana↔romaji direction toggle,
+  optional 60-second auto-reveal, keyboard shortcuts.
 - **Streak** — consecutive review days (current and best) tracked per profile.
 - **Deck pausing** — pause a deck without losing its schedule, resume any time
   (the bot's "pause block learning").
@@ -35,10 +35,14 @@ browser's `localStorage`.
 
 ## The algorithm
 
-Per (profile, card) the app stores `n_repetitions`, `easiness_factor`
-(start 2.5), `interval` (days), `interval_start`, `time_to_review`,
-`total_repetitions`, `last_grade`, `retired`. After flipping a card you grade
-yourself:
+Shuboku 1.0 models every (profile, card) memory with **difficulty**,
+**stability** and **retrievability**:
+
+- difficulty estimates how inherently hard the card is for this learner;
+- stability is the number of days until predicted recall falls to 90%;
+- retrievability is the predicted chance of recalling the card right now.
+
+After flipping a card you grade yourself:
 
 | grade | meaning |
 |---|---|
@@ -50,17 +54,25 @@ yourself:
 | 5 😄 | Remembered easily |
 | 6 😎 | Know very well — retires the card |
 
-On each review at time `now`:
+Grades 0–2 are failed recalls. Grades 3, 4 and 5 map to FSRS Hard, Good and
+Easy. This keeps the bot's expressive 0–6 history while giving the memory
+model a truthful recalled/forgotten signal.
 
-1. `interval = max(stored_interval, floor(now - interval_start))` — coming
-   back later than scheduled and still remembering counts in your favor.
-2. Grade ≥ 3: interval goes 1 → 6 → `round(interval × EF)`; grade < 3 resets
-   the card (`n_repetitions = 0`, `interval = 1`).
-3. `EF += 0.1 − (5 − grade) × (0.08 + (5 − grade) × 0.02)`, clamped at 1.3,
-   on every review.
-4. `time_to_review = now + interval` days, and `interval_start = now` (a
-   deliberate fix over the original bot, which never restarted the clock and
-   let the "real interval" inflate forever).
+The slider opens on a suggested grade instead of always at 3. The pause before
+you reveal the answer is compared with your own median recall time and with the
+card's history: quick recall on a familiar card opens at 5, the same speed on a
+card that used to be hard opens at 4, a long pause opens at 3. Past a minute
+the clock carries no information and the middle grade returns. The suggestion
+is a starting point — the position you release at is the grade recorded.
+
+After each review, FSRS-6 updates difficulty and stability from the grade and
+the retrievability at that exact moment. A late successful recall earns a
+larger bounded stability gain. A failed recall lowers stability and preserves
+residual long-term memory, so one lapse no longer erases years of evidence.
+
+The next interval targets a configurable recall probability: 90% by default,
+with 85%, 95% and 97% options. Changing the target leaves existing due dates
+in place and applies when each card is reviewed again.
 
 Grade 6 removes the card from rotation; you can un-retire it from the card
 browser. A card is due when `time_to_review ≤ now` and it is not retired. The
@@ -68,7 +80,14 @@ review queue pulls due cards from selected decks in random order, capped by
 the session-length setting.
 
 Progress from the original Leitner-box artifact (`shuboku:v1:progress`) is
-migrated automatically on first load.
+migrated automatically on first load. Shuboku 0.1 SM-2 card states upgrade
+lazily on their next review, preserving their interval and review count.
+
+The scheduler uses the open-source
+[ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) implementation of
+[FSRS-6](https://github.com/open-spaced-repetition/awesome-fsrs/wiki/The-Algorithm).
+The rationale and compatibility invariants are recorded in
+[ALGORITHM.md](ALGORITHM.md).
 
 ## Telegram Mini App
 

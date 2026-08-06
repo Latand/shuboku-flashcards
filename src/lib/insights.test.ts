@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DAY_MS } from "./sm2";
+import { DAY_MS } from "./scheduler";
 import { todayKey } from "./storage";
 import {
   aggregates,
@@ -9,7 +9,7 @@ import {
   gradeBar,
   rankAmong,
 } from "./insights";
-import { newCardState, review } from "./sm2";
+import { newCardState, review } from "./scheduler";
 
 const NOW = new Date(2026, 7, 5, 12).getTime(); // local noon
 

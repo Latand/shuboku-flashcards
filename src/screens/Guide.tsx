@@ -7,24 +7,27 @@ const SECTIONS: { jp: string; en: string; body: string[] }[] = [
     en: "The forgetting curve",
     body: [
       "Ebbinghaus showed in the 1880s how fast new information fades: most of it is gone within days unless you meet it again. Every well-timed repetition flattens the curve, so each review buys you a longer stretch of remembering.",
-      "That is all spaced repetition is — reviewing right before you would forget, instead of cramming.",
+      "Spaced repetition brings a memory back near the edge of forgetting. Successful recall there strengthens it efficiently.",
     ],
   },
   {
     jp: "仕組み",
     en: "How Shuboku schedules cards",
     body: [
-      "Every card carries its own schedule. After you flip it, you grade yourself from 0 to 6. Good grades stretch the next interval (1 day → 6 days → weeks → months); failed grades shrink it back to a day and the card relearns from scratch.",
+      "Every card carries two estimates: its inherent difficulty and the stability of your memory. Shuboku combines them with elapsed time to predict your current chance of recall.",
+      "Grades 0–2 record a missed recall. Grades 3, 4 and 5 record a hard, solid or easy success. A miss lowers stability while preserving evidence from older successful reviews.",
+      "The recall target sets when the card returns. The 90% default balances daily work and reliable recall; higher targets create shorter intervals.",
       "Grade 6 retires a card completely — use it for characters you truly know. You can bring retired cards back from the card browser.",
-      "Coming back late is fine: if you still remember a card after a longer gap than planned, the longer gap is what counts.",
+      "A late successful recall carries extra evidence. The model sees the lower probability at that moment and awards a larger, bounded gain in stability.",
     ],
   },
   {
     jp: "評価のコツ",
     en: "How to grade honestly",
     body: [
-      "Grade how hard the recall felt, not whether you eventually got there. Hesitated a while? That's a 4, maybe a 3. Peeked at the answer and thought “of course” — that recognition feeling is exactly what grade 2 is for: recognizing is much easier than recalling.",
-      "Don't sit on one card. If nothing surfaces within ~30 seconds, flip it and grade low — that's useful signal, not failure. There's an auto-reveal option in the settings for this.",
+      "Grade the effort required for recall. Hesitated a while? That's a 4, maybe a 3. Peeked at the answer and thought “of course” — that recognition feeling is exactly what grade 2 is for: recognizing is much easier than recalling.",
+      "Give a card about 30 seconds. When nothing surfaces, flip it and grade low. That honest signal improves the next schedule. The settings include an auto-reveal option.",
+      "The slider already opens somewhere: the pause before you revealed the answer, measured against your own usual pace and this card's history, picks a starting grade and says why underneath. Quick recall on a familiar card opens confident, a long pause on a card that keeps fighting back opens at 3. Past a minute the clock says nothing and the middle grade returns. It is only a starting point — where you release still decides.",
     ],
   },
   {
@@ -65,10 +68,13 @@ export function Guide({ go }: { go: (s: Screen) => void }) {
         ))}
 
         <p className="sb-note" style={{ marginTop: 32 }}>
-          The scheduling algorithm is the SuperMemo-2 variant from the author's SuperLearningBot,
-          with the 0–6 grading scale kept intact. Reading:{" "}
-          <a href="https://super-memory.com/english/ol/sm2.htm" style={{ color: "#e2242f" }}>
-            the SM-2 algorithm
+          Shuboku 1.0 uses the FSRS-6 memory model. Its 0–6 grading language and manual
+          retirement come from the author&rsquo;s SuperLearningBot. Reading:{" "}
+          <a
+            href="https://github.com/open-spaced-repetition/awesome-fsrs/wiki/The-Algorithm"
+            style={{ color: "#e2242f" }}
+          >
+            the FSRS algorithm
           </a>{" "}
           ·{" "}
           <a

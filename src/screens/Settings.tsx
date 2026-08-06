@@ -136,6 +136,41 @@ export function Settings({ go }: { go: (s: Screen) => void }) {
 
         <section className="sb-sec">
           <div className="sb-sec-head">
+            <span className="sb-num">憶</span>
+            <span className="sb-sec-jp">記憶</span>
+            <span className="sb-sec-en">Recall target</span>
+          </div>
+          <p className="sb-blurb">
+            Shuboku schedules each card for this estimated chance of recall. Higher targets
+            create shorter intervals and more reviews. Existing due dates stay in place; the
+            target applies after each card&rsquo;s next review.
+          </p>
+          <div className="sb-opt">
+            <span>
+              <span className="sb-opt-label">
+                {Math.round(profile.settings.desiredRetention * 100)}% at review time
+              </span>
+              <span className="sb-opt-hint" style={{ display: "block" }}>
+                90% balances memory and daily workload.
+              </span>
+            </span>
+            <span className="sb-seg">
+              {[0.85, 0.9, 0.95, 0.97].map((target) => (
+                <button
+                  key={target}
+                  className="sb-btn"
+                  data-on={profile.settings.desiredRetention === target}
+                  onClick={() => app.setSettings({ desiredRetention: target })}
+                >
+                  {Math.round(target * 100)}%
+                </button>
+              ))}
+            </span>
+          </div>
+        </section>
+
+        <section className="sb-sec">
+          <div className="sb-sec-head">
             <span className="sb-num">箱</span>
             <span className="sb-sec-jp">持ち出し</span>
             <span className="sb-sec-en">Export / import</span>
