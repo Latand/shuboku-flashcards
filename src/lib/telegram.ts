@@ -60,8 +60,10 @@ export function initTelegram(): void {
     wa.expand();
     wa.setHeaderColor("#08070a");
     wa.setBackgroundColor("#08070a");
-    // Vertical swipe-to-close would fight the grading slider.
-    wa.disableVerticalSwipes?.();
+    // Vertical swipe-to-close would fight the grading slider. Mobile only:
+    // desktop clients have no such gesture, and asking them to suppress
+    // vertical gestures is what stops the mouse wheel from scrolling.
+    if (wa.platform === "ios" || wa.platform === "android") wa.disableVerticalSwipes?.();
   } catch {
     /* older client — cosmetic calls only */
   }
