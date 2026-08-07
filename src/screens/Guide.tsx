@@ -36,7 +36,7 @@ const SECTIONS: { jp: string; en: string; body: string[] }[] = [
     en: "Make it a habit",
     body: [
       "The schedule only works if you show up: a few minutes daily beats an hour once a week. The due badge tells you exactly what today costs; the streak counter keeps you honest.",
-      "Nothing due and still in the mood? \u201cDrill the hardest\u201d pulls a random handful from the cards you struggle with most. These are ordinary reviews: recall one early and it earns a longer interval, miss it and it comes back soon, exactly as it would on schedule.",
+      "Nothing due and still in the mood? Training pulls a random handful from the cards you struggle with most, and with an empty queue it is the main button on the home screen \u2014 collecting a new pack waits below it. These are ordinary reviews: recall one early and it earns a longer interval, miss it and it comes back soon, exactly as it would on schedule.",
       "Add packs gradually. A fresh pack lands as a pile of due cards — clear it before collecting the next one.",
       "For your own cards, write hints that connect to something personally familiar — associations are what make recall stick.",
     ],

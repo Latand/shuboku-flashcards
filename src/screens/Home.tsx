@@ -116,6 +116,7 @@ export function Home({ go }: { go: (s: Screen) => void }) {
   const firstRun = collectedDecks.length === 0;
 
   const practisable = practisableCount();
+  const practiseSize = Math.min(practisable, settings.limit === 0 ? 20 : settings.limit);
   const practise = () => {
     const queue = buildPracticeQueue();
     if (!queue.length) return;
@@ -515,6 +516,16 @@ export function Home({ go }: { go: (s: Screen) => void }) {
                 {settings.limit === 0 || settings.limit > sessionDue ? sessionDue : settings.limit}{" "}
                 cards
               </button>
+            ) : practisable > 0 ? (
+              /*
+               * Nothing due. The thing actually worth doing is practice, so it
+               * takes the main button; collecting a new pack is a decision for
+               * another day and steps back to a quiet one.
+               */
+              <button className="sb-btn sb-start" onClick={practise}>
+                <Dumbbell size={14} strokeWidth={2} />
+                Training · {practiseSize} cards
+              </button>
             ) : nextDeck ? (
               <button className="sb-btn sb-start" onClick={() => learnDeck(nextDeck.id)}>
                 <Plus size={14} strokeWidth={2} />
@@ -525,9 +536,18 @@ export function Home({ go }: { go: (s: Screen) => void }) {
                 All caught up
               </button>
             )}
-            {practisable > 0 && (
+            {sessionDue > 0 && practisable > 0 && (
               <button className="sb-btn sb-act" data-ghost="true" onClick={practise}>
-                <Dumbbell size={13} /> Drill the hardest · {Math.min(practisable, settings.limit === 0 ? 20 : settings.limit)} at random
+                <Dumbbell size={13} /> Training · {practiseSize} at random
+              </button>
+            )}
+            {sessionDue === 0 && practisable > 0 && nextDeck && (
+              <button
+                className="sb-btn sb-act"
+                data-ghost="true"
+                onClick={() => learnDeck(nextDeck.id)}
+              >
+                <Plus size={13} /> Learn next · {nextDeck.jp} · +{nextDeck.cards.length}
               </button>
             )}
             {sessionDue === 0 && tomorrow > 0 && (
