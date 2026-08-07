@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Flame, Play, Plus } from "lucide-react";
 import { computeStreak } from "./lib/insights";
-import { haptics, setTelegramBack } from "./lib/telegram";
+import { cloudScan, haptics, isTelegram, setTelegramBack } from "./lib/telegram";
 import { AppProvider, useApp } from "./store";
 import { Home } from "./screens/Home";
 import { Study, type SessionResult } from "./screens/Study";
@@ -10,6 +10,7 @@ import { Editor } from "./screens/Editor";
 import { Stats } from "./screens/Stats";
 import { Settings } from "./screens/Settings";
 import { Guide } from "./screens/Guide";
+import { Rescue } from "./screens/Rescue";
 
 export type Screen =
   | { name: "home" }
@@ -19,7 +20,8 @@ export type Screen =
   | { name: "editor"; deckId?: string }
   | { name: "stats" }
   | { name: "settings" }
-  | { name: "guide" };
+  | { name: "guide" }
+  | { name: "rescue" };
 
 function Done({ result, go }: { result: SessionResult; go: (s: Screen) => void }) {
   const app = useApp();
@@ -119,6 +121,19 @@ function Router() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /*
+   * A store that shrank leaves chunks in the cloud that nothing reads any
+   * more — the tail of an older, larger collection, still recoverable. That
+   * only happens when something went wrong, so say so before anything else.
+   */
+  useEffect(() => {
+    if (!isTelegram) return;
+    void (async () => {
+      const scan = await cloudScan();
+      if (scan.orphans.length) setScreen({ name: "rescue" });
+    })();
+  }, []);
+
   // Telegram's native back button leads home from any sub-screen.
   useEffect(() => {
     setTelegramBack(screen.name !== "home", () => setScreen({ name: "home" }));
@@ -147,6 +162,8 @@ function Router() {
       return <Settings go={setScreen} />;
     case "guide":
       return <Guide go={setScreen} />;
+    case "rescue":
+      return <Rescue go={setScreen} />;
   }
 }
 

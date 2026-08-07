@@ -189,6 +189,88 @@ const getItems = (ks: string[]) =>
   );
 const removeItems = (ks: string[]) =>
   new Promise<void>((res, rej) => cloud()!.removeItems(ks, (e) => (e ? rej(e) : res())));
+const getKeys = () =>
+  new Promise<string[]>((res, rej) => cloud()!.getKeys((e, v) => (e ? rej(e) : res(v ?? []))));
+
+/* ---- read-only rescue ---- */
+
+export interface CloudDump {
+  /** every key the account holds for this app, chunk keys or not */
+  keys: string[];
+  /** what sb_n claims the store spans */
+  declared: number | null;
+  /** chunk indexes that actually answered, ascending */
+  present: number[];
+  /** indexes below the highest surviving one that did not answer */
+  gaps: number[];
+  /** chunk index → contents, exactly as stored */
+  parts: Record<number, string>;
+  error?: string;
+}
+
+/**
+ * Everything CloudStorage holds, read without writing a single key.
+ *
+ * cloudLoad only ever asks for sb_0…sb_(n-1), so a store that shrank leaves
+ * chunks above sb_n that nothing reads and nothing deleted — the tail of an
+ * older, larger store. getKeys finds those, which is the whole point here.
+ */
+export interface CloudScan {
+  keys: string[];
+  declared: number | null;
+  indexes: number[];
+  /** chunks sitting above what sb_n claims — the tail of a larger, older store */
+  orphans: number[];
+  error?: string;
+}
+
+/** Two calls, no contents: enough to tell whether an older store is stranded. */
+export async function cloudScan(): Promise<CloudScan> {
+  if (!cloud()) return { keys: [], declared: null, indexes: [], orphans: [] };
+  try {
+    const keys = await getKeys();
+    const indexes = keys
+      .filter((k) => k.startsWith(KEY_PREFIX) && /^\d+$/.test(k.slice(KEY_PREFIX.length)))
+      .map((k) => Number(k.slice(KEY_PREFIX.length)))
+      .sort((a, b) => a - b);
+    const nRaw = keys.includes(KEY_COUNT) ? await getItem(KEY_COUNT) : undefined;
+    const n = Number(nRaw);
+    const declared = nRaw && Number.isFinite(n) ? n : null;
+    const orphans = declared == null ? [] : indexes.filter((i) => i >= declared);
+    return { keys, declared, indexes, orphans };
+  } catch (e) {
+    return { keys: [], declared: null, indexes: [], orphans: [], error: String(e).slice(0, 200) };
+  }
+}
+
+export async function cloudInspect(): Promise<CloudDump> {
+  const empty: CloudDump = { keys: [], declared: null, present: [], gaps: [], parts: {} };
+  if (!cloud()) return { ...empty, error: "not running inside Telegram" };
+  try {
+    const { keys, declared, indexes, error } = await cloudScan();
+    if (error) return { ...empty, error };
+
+    // getItems takes a list; keep each request small enough to be answered.
+    const parts: Record<number, string> = {};
+    for (let i = 0; i < indexes.length; i += 40) {
+      const batch = indexes.slice(i, i + 40);
+      const values = await getItems(batch.map((j) => KEY_PREFIX + j));
+      for (const j of batch) {
+        const v = values[KEY_PREFIX + j];
+        if (v !== undefined) parts[j] = v;
+      }
+    }
+
+    const present = Object.keys(parts)
+      .map(Number)
+      .sort((a, b) => a - b);
+    const highest = present.length ? present[present.length - 1] : -1;
+    const gaps = Array.from({ length: highest + 1 }, (_, i) => i).filter((i) => !(i in parts));
+    return { keys, declared, present, gaps, parts };
+  } catch (e) {
+    return { ...empty, error: String(e).slice(0, 200) };
+  }
+}
 
 export async function cloudLoad(): Promise<string | null> {
   if (!cloud()) return null;
@@ -269,6 +351,26 @@ async function cloudSaveNow(json: string): Promise<CloudSyncResult> {
   try {
     const previous = readDigests();
     const wanted = chunkDigests(parts);
+
+    /*
+     * With no fingerprints this device has no idea what the cloud holds, and
+     * the cloud may well hold more than we are about to write — a device whose
+     * browser storage was cleared starts empty and would otherwise flatten the
+     * backup of a full collection. Ask what is up there first and refuse.
+     */
+    if (previous.length === 0) {
+      const nRaw = await getItem(KEY_COUNT);
+      const declared = Number(nRaw);
+      if (nRaw && Number.isFinite(declared) && declared > parts.length) {
+        return {
+          written: 0,
+          total: parts.length,
+          skipped: true,
+          error: `cloud holds ${declared} chunks and this device only has ${parts.length}; refusing to overwrite — restore from the cloud first`,
+        };
+      }
+    }
+
     const changed = changedIndexes(wanted, previous);
 
     for (const i of changed) await setItem(KEY_PREFIX + i, parts[i]);

@@ -5,3 +5,4 @@ dist
 audio-review.html
 .review.log
 .audio-raw/
+.probe/

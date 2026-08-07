@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { ArrowLeft, Check, Download, Plus, Trash2, Upload, UserRound } from "lucide-react";
+import { ArrowLeft, Check, Download, LifeBuoy, Plus, Trash2, Upload, UserRound } from "lucide-react";
 import type { Screen } from "../App";
-import { haptics } from "../lib/telegram";
+import { haptics, isTelegram } from "../lib/telegram";
 import { useApp } from "../store";
 
 export function Settings({ go }: { go: (s: Screen) => void }) {
@@ -200,6 +200,25 @@ export function Settings({ go }: { go: (s: Screen) => void }) {
           </div>
           {importMsg && <p className="sb-note">{importMsg}</p>}
         </section>
+
+        {isTelegram && (
+          <section className="sb-sec">
+            <div className="sb-sec-head">
+              <span className="sb-num">救</span>
+              <span className="sb-sec-jp">救出</span>
+              <span className="sb-sec-en">Cloud rescue</span>
+            </div>
+            <p className="sb-blurb">
+              Reads what Telegram&rsquo;s cloud actually holds and puts back a collection this
+              device lost. It only reads until you ask it to restore.
+            </p>
+            <div className="sb-actions">
+              <button className="sb-btn sb-act" data-ghost="true" onClick={() => go({ name: "rescue" })}>
+                <LifeBuoy size={12} /> Open cloud rescue
+              </button>
+            </div>
+          </section>
+        )}
 
         <div className="sb-foot">
           <button
