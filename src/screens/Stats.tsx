@@ -4,6 +4,7 @@ import { aggregates, compareWeakness, computeStreak, rankAmong } from "../lib/in
 import { DAY_MS, isDue, recallProbability } from "../lib/scheduler";
 import { todayKey } from "../lib/storage";
 import { useApp } from "../store";
+import { useWidth } from "./GradeHistory";
 
 const STATUS_COLORS = {
   mastered: "#e7cf7a",
@@ -28,6 +29,49 @@ function statusOf(s: { retired: boolean; lastGrade: number | null; nRepetitions:
   if (s.lastGrade >= 3 && s.nRepetitions >= 2) return "learned";
   if (s.lastGrade < 3) return "struggling";
   return "learning";
+}
+
+/** Reviews per day over the last month, drawn in the card-history style. */
+function LearningGraph({ reviewLog, now }: { reviewLog: Record<string, number>; now: number }) {
+  const [ref, width] = useWidth();
+  const DAYS = 30;
+  const counts: number[] = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    counts.push(reviewLog[todayKey(now - i * DAY_MS)] ?? 0);
+  }
+  const total = counts.reduce((a, b) => a + b, 0);
+  const max = Math.max(1, ...counts);
+
+  const height = 104;
+  const padX = 6;
+  const padY = 7;
+  const x = (i: number) => padX + (i / (DAYS - 1)) * (Math.max(width, 2 * padX + 10) - padX * 2);
+  const y = (count: number) => padY + (1 - count / max) * (height - padY * 2);
+
+  const line = counts.map((c, i) => `${i ? "L" : "M"}${x(i)},${y(c)}`).join(" ");
+  const area = `${line} L${x(DAYS - 1)},${height} L${x(0)},${height} Z`;
+
+  return (
+    <figure className="sb-history" ref={ref as never}>
+      <svg
+        width={width || undefined}
+        height={height}
+        viewBox={`0 0 ${Math.max(width, 1)} ${height}`}
+        role="img"
+        aria-label={`${total} reviews over the last ${DAYS} days, busiest day ${max}`}
+      >
+        <path className="sb-history-area" d={area} />
+        <path className="sb-history-line" d={line} />
+      </svg>
+      <figcaption>
+        <span>{DAYS} days ago</span>
+        <span>
+          {total} reviews · busiest day {max}
+        </span>
+        <span>today</span>
+      </figcaption>
+    </figure>
+  );
 }
 
 export function Stats({ go }: { go: (s: Screen) => void }) {
@@ -229,6 +273,16 @@ export function Stats({ go }: { go: (s: Screen) => void }) {
             </div>
           </section>
         )}
+
+        <section className="sb-sec">
+          <div className="sb-sec-head">
+            <span className="sb-num">学</span>
+            <span className="sb-sec-jp">学びの軌跡</span>
+            <span className="sb-sec-en">Learning graph</span>
+          </div>
+          <p className="sb-blurb">How much you reviewed each day over the last month.</p>
+          <LearningGraph reviewLog={profile.reviewLog} now={now} />
+        </section>
 
         <section className="sb-sec">
           <div className="sb-sec-head">

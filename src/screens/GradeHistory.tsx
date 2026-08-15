@@ -21,7 +21,7 @@ function fmtDay(at: number): string {
 }
 
 /** The rendered width, so one SVG unit is one pixel. */
-function useWidth(): [React.RefObject<HTMLElement>, number] {
+export function useWidth(): [React.RefObject<HTMLElement>, number] {
   const ref = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(0);
   useLayoutEffect(() => {

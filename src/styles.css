@@ -522,4 +522,13 @@ html, body { overscroll-behavior-y: none; }
 @media (max-width: 520px) {
   .sb-mast { padding-top: 34px; }
   .sb-stage { min-height: 54vh; }
+  .sb-wrap { padding-left: 14px; padding-right: 14px; }
+  /* On a phone the meta line wraps instead of vanishing off the edge. */
+  .sb-row-sub { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.7; }
+  .sb-row { gap: 10px; padding: 10px 11px; }
+  .sb-row-char { min-width: 36px; }
+  .sb-barrow-l { width: 64px; }
+  .sb-stat { padding: 16px 8px; }
+  .sb-stat-n { font-size: 22px; }
+  .sb-comp-pct { font-size: 36px; }
 }

@@ -26,7 +26,7 @@ export interface GradeEntry {
  * life, and small enough that a full collection still fits comfortably in
  * Telegram's cloud storage.
  */
-export const HISTORY_LIMIT = 24;
+export const HISTORY_LIMIT = 50;
 
 export interface CardState {
   /** Shuboku scheduler state format. Missing means legacy SM-2 state. */
