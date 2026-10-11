@@ -1,7 +1,8 @@
 import { defineEndpoint } from "@aiogram/tgcloud-grammy";
 import { EndpointError, db } from "sdk";
 import { eq } from "sdk/db";
-import { mergeProgress, parseProgress, type Progress } from "../../shared/progress.js";
+import { parseProgress, type Progress } from "../../shared/progress.js";
+import { syncProgress, type ProgressStore } from "../../shared/sync-progress.js";
 import { progress } from "../schema.js";
 
 interface SyncInput {
@@ -28,17 +29,24 @@ export default defineEndpoint<SyncInput, { progress: Progress; serverTime: numbe
   const incoming = parseProgress(input.progress);
   if (!incoming) throw new EndpointError("Invalid progress payload.", { code: "BAD_INPUT" });
 
-  const existing = await db.select().from(progress).where(eq(progress.userId, user.id)).get();
-  const merged = mergeProgress(existing?.data ?? null, incoming);
-  if (!existing || JSON.stringify(existing.data) !== JSON.stringify(merged)) {
-    await db
-      .insert(progress)
-      .values({ userId: user.id, data: merged, updatedAt: Date.now() })
-      .onConflictDoUpdate({
-        target: progress.userId,
-        set: { data: merged, updatedAt: Date.now() },
-      });
-  }
+  const store: ProgressStore = {
+    async read(userId) {
+      const row = await db.select().from(progress).where(eq(progress.userId, userId)).get();
+      return row ? { data: row.data } : null;
+    },
+    async insertIfAbsent(userId, data, updatedAt) {
+      const result = await db.insert(progress).values({ userId, data, updatedAt })
+        .onConflictDoNothing({ target: progress.userId }).run();
+      return result.rowsAffected === 1;
+    },
+    async compareAndSet(userId, expected, data, updatedAt) {
+      const rows = await db.update(progress).set({ data, updatedAt })
+        .where(eq(progress.userId, userId), eq(progress.data, expected))
+        .returning({ userId: progress.userId }).run();
+      return rows.length === 1;
+    },
+  };
+  const merged = await syncProgress(store, user.id, incoming);
 
   return { progress: merged, serverTime: Date.now() };
 });

@@ -172,15 +172,28 @@ describe("parseProgress", () => {
     expect(parsed.settings).toEqual({ direction: "de-uk", at: 0 });
   });
 
-  test("filters history entries and caps their number", () => {
+  test("caps valid history and rejects a card with malformed history", () => {
     const base = review(newCardState(T0), 4, T0);
-    const history = [
-      ...Array.from({ length: 70 }, (_, i) => ({ at: T0 + i, grade: 4 })),
-      { at: "x", grade: 4 },
-      { at: T0, grade: 9 },
-    ];
+    const history = Array.from({ length: 70 }, (_, i) => ({ at: T0 + i, grade: 4 }));
     const parsed = parseProgress({ version: 1, cards: { "sein:ich-bin": { ...base, history } } })!;
     expect(parsed.cards["sein:ich-bin"]!.history).toHaveLength(50);
+    const malformed = parseProgress({ version: 1, cards: { "sein:ich-bin": { ...base, history: [...history, { at: "x", grade: 4 }] } } })!;
+    expect(malformed.cards).toEqual({});
+  });
+
+  test("rejects impossible counters, intervals and distant review timestamps", () => {
+    const valid = review(newCardState(T0), 4, T0);
+    const invalidStates = [
+      { ...valid, interval: -50 },
+      { ...valid, nRepetitions: -1 },
+      { ...valid, totalRepetitions: -1 },
+      { ...valid, lastReview: 9_007_199_254_740_000, history: [{ at: 9_007_199_254_740_000, grade: 4 }] },
+    ];
+    for (const state of invalidStates) {
+      const parsed = parseProgress({ version: 1, cards: { "sein:ich-bin": state } })!;
+      expect(parsed.cards["sein:ich-bin"]).toBeUndefined();
+      expect(mergeProgress({ ...emptyProgress(), cards: { "sein:ich-bin": valid } }, parsed).cards["sein:ich-bin"]).toEqual(valid);
+    }
   });
 
   test("does not copy unknown fields", () => {

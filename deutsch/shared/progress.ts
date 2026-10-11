@@ -36,6 +36,8 @@ export const DEFAULT_PACKS: readonly string[] = ["pronomen", "sein"];
 export const MAX_CARDS = 2000;
 export const MAX_PACKS = 200;
 const MAX_HISTORY = 50;
+const MAX_INTERVAL_DAYS = 36_500;
+const MAX_FUTURE_SKEW_MS = 30 * 86_400_000;
 const KEY_RE = /^[a-z0-9-]{1,40}$/;
 const CARD_RE = /^[a-z0-9-]{1,40}:[a-z0-9-]{1,60}$/;
 
@@ -120,28 +122,49 @@ export function mergeProgress(a: Progress | null, b: Progress): Progress {
 const isRecord = (x: unknown): x is Record<string, unknown> =>
   typeof x === "object" && x !== null && !Array.isArray(x);
 const isNum = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
+const isCount = (x: unknown): x is number => Number.isInteger(x) && (x as number) >= 0 && (x as number) <= 100_000;
 const isGrade = (x: unknown): x is Grade => Number.isInteger(x) && (x as number) >= 0 && (x as number) <= 6;
+const isEventTime = (x: unknown): x is number =>
+  Number.isSafeInteger(x) && (x as number) >= 0 && (x as number) <= Date.now() + MAX_FUTURE_SKEW_MS;
+const isScheduledTime = (x: unknown): x is number =>
+  Number.isSafeInteger(x) && (x as number) >= 0 &&
+  (x as number) <= Date.now() + MAX_FUTURE_SKEW_MS + (MAX_INTERVAL_DAYS + 1) * 86_400_000;
+
+function isHistory(x: unknown): x is { at: number; grade: Grade }[] {
+  if (!Array.isArray(x)) return false;
+  for (const item of x) {
+    if (!isRecord(item) || !isEventTime(item.at) || !isGrade(item.grade)) return false;
+  }
+  return true;
+}
 
 function parseCard(x: unknown): CardState | null {
   if (!isRecord(x)) return null;
-  if (!isNum(x.nRepetitions) || !isNum(x.interval) || !isNum(x.intervalStart)) return null;
-  if (!isNum(x.timeToReview) || !isNum(x.totalRepetitions) || typeof x.retired !== "boolean") return null;
-
-  const history = Array.isArray(x.history)
-    ? x.history
-        .filter((h): h is { at: number; grade: Grade } => isRecord(h) && isNum(h.at) && isGrade(h.grade))
-        .map((h) => ({ at: h.at, grade: h.grade }))
-        .slice(-MAX_HISTORY)
-    : [];
+  if (!isCount(x.nRepetitions) || !isCount(x.totalRepetitions) || x.nRepetitions > x.totalRepetitions) return null;
+  if (!isNum(x.interval) || x.interval < 0 || x.interval > MAX_INTERVAL_DAYS) return null;
+  if (!isEventTime(x.intervalStart) || !isScheduledTime(x.timeToReview) || typeof x.retired !== "boolean") return null;
+  if (!isNum(x.easinessFactor) || x.easinessFactor < 1.3 || x.easinessFactor > 3.5) return null;
+  if (x.lastGrade !== null && !isGrade(x.lastGrade)) return null;
+  if (x.schedulerVersion !== undefined && x.schedulerVersion !== 1) return null;
+  if (x.schedulerVersion === 1) {
+    if (x.stability !== undefined && (!isNum(x.stability) || x.stability < 0 || x.stability > MAX_INTERVAL_DAYS)) return null;
+    if (x.difficulty !== undefined && (!isNum(x.difficulty) || x.difficulty < 0 || x.difficulty > 10)) return null;
+    if (x.lapses !== undefined && !isCount(x.lapses)) return null;
+    if (x.lastReview !== null && !isEventTime(x.lastReview)) return null;
+  }
+  if (x.history !== undefined && !isHistory(x.history)) return null;
+  const history = (x.history as { at: number; grade: Grade }[] | undefined)?.slice(-MAX_HISTORY) ?? [];
+  const maxScheduledAt = x.intervalStart + (MAX_INTERVAL_DAYS + 1) * 86_400_000;
+  if (x.timeToReview > maxScheduledAt) return null;
 
   const card: CardState = {
     nRepetitions: x.nRepetitions,
-    easinessFactor: isNum(x.easinessFactor) ? x.easinessFactor : 2.5,
+    easinessFactor: x.easinessFactor,
     interval: x.interval,
     intervalStart: x.intervalStart,
     timeToReview: x.timeToReview,
     totalRepetitions: x.totalRepetitions,
-    lastGrade: isGrade(x.lastGrade) ? x.lastGrade : null,
+    lastGrade: x.lastGrade,
     history,
     retired: x.retired,
   };
@@ -150,7 +173,7 @@ function parseCard(x: unknown): CardState | null {
     if (isNum(x.stability)) card.stability = x.stability;
     if (isNum(x.difficulty)) card.difficulty = x.difficulty;
     if (isNum(x.lapses)) card.lapses = x.lapses;
-    card.lastReview = isNum(x.lastReview) ? x.lastReview : null;
+    card.lastReview = x.lastReview as number | null;
   }
   return card;
 }
@@ -166,7 +189,7 @@ export function parseProgress(x: unknown): Progress | null {
   const packs: Record<string, PackFlag> = {};
   if (isRecord(x.packs)) {
     for (const [id, flag] of Object.entries(x.packs).slice(0, MAX_PACKS)) {
-      if (KEY_RE.test(id) && isRecord(flag) && typeof flag.on === "boolean" && isNum(flag.at)) {
+      if (KEY_RE.test(id) && isRecord(flag) && typeof flag.on === "boolean" && isEventTime(flag.at)) {
         packs[id] = { on: flag.on, at: flag.at };
       }
     }
@@ -182,7 +205,7 @@ export function parseProgress(x: unknown): Progress | null {
   }
 
   let settings: Progress["settings"] = { direction: "de-uk", at: 0 };
-  if (isRecord(x.settings) && isNum(x.settings.at)) {
+  if (isRecord(x.settings) && isEventTime(x.settings.at)) {
     const d = x.settings.direction;
     if (d === "de-uk" || d === "uk-de") settings = { direction: d, at: x.settings.at };
   }
