@@ -4,15 +4,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "tsc -p tsconfig.json && tsc -p bot/tsconfig.json && vite build && tgcloud-grammy build --src bot",
     "preview": "vite preview",
-    "test": "bun test"
+    "test": "bun test",
+    "status": "bun run build && tgcloud status",
+    "deploy": "bun run build && tgcloud push"
   },
   "dependencies": {
+    "grammy": "^1.46.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@aiogram/tgcloud-grammy": "0.3.0",
+    "@tgcloud/cli": "0.2.0",
     "@types/bun": "^1.1.14",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

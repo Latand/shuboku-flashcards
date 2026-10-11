@@ -1,19 +1,32 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { newCardState, review, type Grade } from "../../src/lib/scheduler";
-import { isPackOn, type Direction, type Progress } from "../shared/progress";
+import { isPackOn, parseProgress, type Direction, type Progress } from "../shared/progress";
 import { PACKS } from "./data/words";
 import { loadProgress, saveProgress } from "./lib/store";
-import { createSync, localOnlyTransport } from "./lib/sync";
+import { createSync, type SyncTransport } from "./lib/sync";
+import { callEndpoint } from "./lib/tgcloud";
 import { buildQueue } from "./lib/queue";
 import { haptics } from "./lib/tg";
 import { Home } from "./screens/Home";
 import { Study } from "./screens/Study";
 
 /*
- * The one place a backend plugs in: replace `localOnlyTransport` with a
- * `SyncTransport` that talks to the server. Studying keeps working without it.
+ * The transport only activates when Telegram exposes authenticated Serverless
+ * calls. Outside Telegram, studying remains local and makes no network request.
  */
-const transport = localOnlyTransport;
+const telegramTransport: SyncTransport = {
+  available: () =>
+    typeof window !== "undefined" &&
+    Boolean((window as Window & { Telegram?: { WebApp?: { initData?: string; Serverless?: unknown } } }).Telegram?.WebApp?.initData) &&
+    Boolean((window as Window & { Telegram?: { WebApp?: { Serverless?: unknown } } }).Telegram?.WebApp?.Serverless),
+  async sync(local) {
+    const response = await callEndpoint<{ progress?: unknown }>("sync", { progress: local });
+    const remote = parseProgress(response?.progress);
+    if (!remote) throw new Error("invalid-sync-response");
+    return remote;
+  },
+};
+const transport = telegramTransport;
 
 export function App() {
   const [progress, setProgress] = useState<Progress>(loadProgress);

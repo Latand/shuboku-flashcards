@@ -569,7 +569,7 @@ null — нуль (0); eins — один (1); zwei — два (2); drei — тр
 
 ## 16. Бриф для білдера
 
-> **Стан збірки клієнта (етап frontend, 2026-10-11).** Зроблено: `bunfig.toml`, `deutsch/` (Vite, React, `web/`, `shared/`), 167 карток у 13 наборах, стиль «Heft», тести, `.github/workflows/deutsch.yml` без кроку деплою, розділ у кореневому `README.md`. Свідомо не зроблено, лишається наступному етапу: `bot/`, `tgcloud.jsonc`, залежності `@aiogram/tgcloud-grammy`, `@tgcloud/cli`, `grammy`, скрипти `status`/`deploy`, крок деплою в workflow, `web/lib/tg.ts::callEndpoint`. Шов для сервера: `deutsch/web/lib/sync.ts` (`SyncTransport`, `localOnlyTransport`), підключається одним рядком у `deutsch/web/App.tsx`. Тому `build` у `deutsch/package.json` зараз `tsc -p tsconfig.json && vite build`. Пункти нижче про `bot/` і `tgcloud-grammy build` ще не виконані.
+> **Стан після tgcloud-етапу (2026-10-11).** Реалізовано `deutsch/bot/` (grammY `/start`, `POST /api/sync`, схема SQLite `progress`), `tgcloud.jsonc`, transport Mini App та умовну публікацію в workflow за секретом `TGCLOUD_TOKEN`. `bun run build` проходить без логіна; typecheck і `tgcloud-grammy build --src bot` запускаються окремо. Наведені нижче файли й перевірки лишаються специфікацією реалізації. Платформний логін, створення бота й деплой тут не виконувалися.
 
 ### Файли
 

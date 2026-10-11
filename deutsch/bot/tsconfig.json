@@ -1,0 +1,5 @@
+{
+  "extends": "@aiogram/tgcloud-grammy/tsconfig.json",
+  "include": [".", "../shared"],
+  "exclude": ["../shared/**/*.test.ts"]
+}

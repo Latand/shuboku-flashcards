@@ -20,7 +20,8 @@ cd deutsch
 bun install
 bun run dev            # dev-сервер
 bun test               # тести: слова, злиття прогресу, черга, формат, синхронізація
-bun run build          # typecheck + vite build у dist/
+bun run build          # typecheck web і bare-V8 bot, Vite, tgcloud bundle
+bun run status         # build + локальний статус прив'язки tgcloud
 bun run preview        # показати зібране
 ```
 
@@ -33,7 +34,9 @@ web/data/words.ts      167 карток у 13 наборах; id слів нез
 web/lib/queue.ts       черга сесії: спершу повторення, потім нові; «Не згадав» повертається раз
 web/lib/format.ts      «завтра», «2 дні», «5 днів», «3 тижні», «5 карток»
 web/lib/store.ts       localStorage "wortschatz:v1"
-web/lib/sync.ts        інтерфейс синхронізації з сервером і його локальна реалізація
+web/lib/sync.ts        local-first sync engine та статуси
+web/lib/tgcloud.ts     виклик Telegram Serverless endpoint
+bot/                   grammY /start, endpoint sync і схема таблиці progress
 web/screens/           Home, Study
 shared/progress.ts     модель прогресу, злиття, перевірка даних
 ```
@@ -46,6 +49,18 @@ shared/progress.ts     модель прогресу, злиття, переві
 
 Прогрес лежить у `localStorage` і ніколи не вимагає мережі. `shared/progress.ts` описує, як зливаються дві копії: кожен ключ окремо, новіший виграє. Тому порожній пристрій не може стерти прогрес з іншого.
 
-Шов для сервера: `web/lib/sync.ts`. Рушій `createSync` працює з інтерфейсом `SyncTransport` (`available()` і `sync(local) → Promise<server merged>`). Зараз підключено `localOnlyTransport`: він недоступний, застосунок не робить жодних запитів, статус «Збережено на цьому пристрої». Щоб додати бекенд, треба реалізувати `SyncTransport` і підставити його в `web/App.tsx` замість `localOnlyTransport`. Решта коду не змінюється.
+`web/lib/sync.ts` лишається рушієм local-first синхронізації. У Telegram він надсилає повний прогрес у `POST /api/sync`; поза Telegram `web/lib/tgcloud.ts` відмовляє до мережевого виклику, і прогрес лишається в `localStorage`. Недоступний endpoint переводить статус в offline, не перериваючи навчання. Сервер перевіряє Telegram user, розмір і структуру даних, а потім зливає записи через спільні `parseProgress` і `mergeProgress` у таблицю `progress`.
 
-Бота, endpoints і хостинг на Telegram Serverless (tgcloud) цей застосунок поки не містить, див. `../docs/deutsch/RESEARCH.md`.
+Бот `bot/lib/bot.ts` відповідає на `/start` і показує кнопку Mini App із URL кнопки меню, налаштованої в BotFather. `tgcloud.jsonc` публікує Vite `dist/` на тому ж tgcloud origin, що й API.
+
+## Публікація оператором
+
+Для першої публікації після merge PR:
+
+1. У @BotFather створіть бота, увімкніть Telegram Serverless і створіть CLI Access token.
+2. У корені виконайте `bun install`, потім у `deutsch/` — `bun install` і `npx tgcloud login`.
+3. Із `deutsch/` запустіть `bun run deploy`. Команда збере клієнт і bot та опублікує обидва на tgcloud; окремого frontend-хостингу для `dist/` немає.
+4. Із `deutsch/` виконайте `npx tgcloud migrate` і підтвердьте створення таблиці `progress`.
+5. У BotFather встановіть Menu Button на URL, який вивів tgcloud, назва «Картки». Відкрийте бота, надішліть `/start`, запустіть картки й перевірте статус синхронізації.
+
+Для автоматичних наступних публікацій додайте CLI Access token у GitHub Actions як секрет `TGCLOUD_TOKEN`. Workflow збирає PR без публікації; push у `main` збирає, виконує `tgcloud fetch`, `push` і `migrate --safe`, якщо секрет задано. Деплой Shuboku GitHub Pages лишається окремим. Передумови платформи й ручний процес описані в [`../docs/deutsch/RESEARCH.md`](../docs/deutsch/RESEARCH.md#11-кроки-деплою-для-оператора).

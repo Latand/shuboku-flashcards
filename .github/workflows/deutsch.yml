@@ -1,4 +1,4 @@
-name: Wortschatz
+name: Wortschatz (tgcloud)
 
 on:
   push:
@@ -15,17 +15,26 @@ on:
     paths: *paths
   workflow_dispatch:
 
+concurrency:
+  group: tgcloud-deploy
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      TGCLOUD_TOKEN: ${{ secrets.TGCLOUD_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       # root install: ts-fsrs for src/lib/scheduler.ts, which Wortschatz imports
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
@@ -34,3 +43,10 @@ jobs:
         working-directory: deutsch
       - run: bun run build
         working-directory: deutsch
+      - name: Deploy to Telegram Serverless
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && env.TGCLOUD_TOKEN != ''
+        working-directory: deutsch
+        run: |
+          npx tgcloud fetch
+          npx tgcloud push
+          npx tgcloud migrate --safe
