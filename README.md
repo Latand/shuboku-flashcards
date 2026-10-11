@@ -172,3 +172,9 @@ bun run build    # typecheck + production build
 
 Deployed to GitHub Pages by `.github/workflows/deploy.yml` on every push to
 `main` (bun build → `actions/deploy-pages`).
+
+## Wortschatz (German)
+
+A second app in this repository, `deutsch/`, teaches German with the same FSRS
+scheduler and its own look. It has its own `package.json` and build and does not
+change anything above; see [`deutsch/README.md`](deutsch/README.md).

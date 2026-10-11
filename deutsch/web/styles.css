@@ -1,0 +1,527 @@
+/* Wortschatz — "Heft": paper, ink, a mustard button, and a colour for every grammatical gender. */
+
+:root {
+  --bg: #f4f0e6;
+  --panel: #fffdf8;
+  --line: #ddd5c4;
+  --ink: #1c1b1f;
+  --muted: #6f6a60;
+  --accent: #f0b429;
+  --accent-ink: #1c1b1f;
+  --der: #2457c5;
+  --die: #c8332a;
+  --das: #23845a;
+  --grid: rgba(36, 87, 197, 0.07);
+
+  --word: Futura, "Avenir Next", "Century Gothic", Jost, system-ui, sans-serif;
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --mono: ui-monospace, "SF Mono", "Noto Sans Mono", Menlo, monospace;
+
+  --radius: 14px;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font: 16px/1.45 var(--ui);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--der);
+  outline-offset: 2px;
+}
+
+.page {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+/* ---- header ---- */
+
+.masthead {
+  padding-top: 8px;
+}
+
+.title {
+  font: 700 2.1rem/1.1 var(--word);
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.label {
+  font: 600 0.78rem/1 var(--ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ---- panels and buttons ---- */
+
+.panel {
+  background: var(--panel);
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.counts {
+  font-size: 1.1rem;
+  margin-bottom: 14px;
+}
+
+.counts strong {
+  font: 700 1.5rem var(--mono);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1.5px solid var(--ink);
+  border-radius: 12px;
+  background: var(--panel);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  cursor: default;
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
+  border-color: var(--muted);
+}
+
+.btn-primary {
+  width: 100%;
+  min-height: 52px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 1.05rem;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.btn-primary:disabled {
+  box-shadow: none;
+}
+
+.btn-small {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.95rem;
+}
+
+.btn-add {
+  background: var(--accent);
+}
+
+.btn-quiet {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+/* ---- direction switch ---- */
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.seg {
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.seg[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--accent);
+  font-weight: 600;
+}
+
+/* ---- pack lists ---- */
+
+.packs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pack {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 12px 12px 14px;
+}
+
+.pack-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pack-title {
+  font: 700 1.05rem/1.25 var(--ui);
+}
+
+.pack-blurb {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 2px;
+}
+
+.pack-meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.bar,
+.meter {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.bar {
+  flex: 0 0 72px;
+}
+
+.bar > span,
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--das);
+}
+
+.pack-count {
+  font: 0.8rem var(--mono);
+  color: var(--muted);
+}
+
+.empty {
+  color: var(--muted);
+}
+
+.sync {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* ---- study ---- */
+
+.study {
+  min-height: 100vh;
+  gap: 16px;
+}
+
+.study-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.progress-count {
+  font: 600 1rem var(--mono);
+  color: var(--muted);
+}
+
+.meter {
+  margin-top: -6px;
+}
+
+.meter > span {
+  background: var(--ink);
+}
+
+.card {
+  position: relative;
+  background: var(--panel);
+  border: 1.5px solid var(--ink);
+  border-left: 10px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 28px 20px 24px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  box-shadow: 3px 3px 0 var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.card[data-gender="der"] {
+  border-left-color: var(--der);
+}
+.card[data-gender="die"] {
+  border-left-color: var(--die);
+}
+.card[data-gender="das"] {
+  border-left-color: var(--das);
+}
+
+/* In flow, so the headword can never sit under it. */
+.gender {
+  align-self: flex-end;
+  margin: -14px -6px 10px 0;
+  font: 600 0.78rem var(--mono);
+  color: var(--muted);
+}
+
+/* The article and noun share a line, so the size shrinks with the viewport before it can wrap. */
+.front,
+.back {
+  font: 700 min(2.4rem, 8vw) / 1.15 var(--word);
+}
+
+.uk-front,
+.uk-back {
+  font-family: var(--ui);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.verb-form {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 6px;
+  padding: 0 6px;
+}
+
+.clue {
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.uk-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.de-clue {
+  font: 1.1rem var(--word);
+}
+
+.answer {
+  width: 100%;
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1.5px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.plural {
+  font: 1.1rem var(--word);
+  color: var(--ink);
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.art-der {
+  color: var(--der);
+}
+.art-die {
+  color: var(--die);
+}
+.art-das {
+  color: var(--das);
+}
+/* "die" before a plural is not the feminine article, so it stays in ink */
+.art-plural {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.reveal {
+  margin-top: 4px;
+}
+
+.grades {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.grade {
+  min-height: 68px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1.5px solid var(--ink);
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.grade:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.grade-label {
+  font-weight: 700;
+  font-size: 0.86rem;
+  line-height: 1.2;
+}
+
+.grade-next {
+  font: 0.76rem var(--mono);
+  color: var(--muted);
+}
+
+.grade-miss {
+  border-color: var(--die);
+  box-shadow: 0 3px 0 var(--die);
+}
+.grade-miss .grade-label {
+  color: var(--die);
+}
+.grade-good {
+  background: var(--accent);
+}
+.grade-good .grade-next {
+  color: var(--accent-ink);
+}
+.grade-easy {
+  border-color: var(--das);
+  box-shadow: 0 3px 0 var(--das);
+}
+.grade-easy .grade-label {
+  color: var(--das);
+}
+
+/* ---- finished ---- */
+
+.done {
+  min-height: 100vh;
+  justify-content: center;
+}
+
+.done-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.done-count {
+  font-size: 1.2rem;
+}
+
+@media (max-width: 719px) {
+  /* thumb reach: the answer controls sit at the bottom of the screen */
+  .reveal,
+  .grades {
+    margin-top: auto;
+  }
+}
+
+@media (min-width: 720px) {
+  .page {
+    padding-top: 48px;
+  }
+  .card {
+    min-height: 280px;
+  }
+  .front,
+  .back {
+    font-size: 3rem;
+  }
+  .uk-front,
+  .uk-back {
+    font-size: 2.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .answer {
+    animation: appear 0.18s ease-out;
+  }
+  @keyframes appear {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+}
