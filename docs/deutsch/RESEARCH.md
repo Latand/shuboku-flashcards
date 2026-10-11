@@ -11,6 +11,8 @@
 - «Особові займенники»: ich – я, du – ти, er – він, sie – вона, es – воно, wir – ми, ihr – ви (група або клас), sie – вони, Sie – Ви (ввічлива форма);
 - «sein – бути»: ich bin, du bist, er/sie/es ist, wir sind, ihr seid, sie/Sie sind.
 
+Уточнення оператора (2026-10-11, через оркестратора): ці два набори мають бути окремими наборами, першими в каталозі; переклади займенників дослівно як на аркуші; картки sie (вона) / sie (вони) / Sie (Ви) треба зробити розв’язними (підказка або форма дієслова, «sie ist» проти «sie sind»); для відмінювання потрібен зрозумілий формат, наприклад «wir … (sein)» → «sind», за можливості в обох напрямках. Учень — шкільний початківець, тож решта базових слів того ж рівня.
+
 Значення за замовчуванням від оркестратора (оператор може їх змінити): окремий застосунок у цьому репозиторії; Shuboku, його збірка, workflow GitHub Pages і адреса https://latand.github.io/shuboku-flashcards/ працюють без змін; інтерфейс українською; близько 150 слів рівня A1 у кількох наборах, іменники з артиклем і множиною; інший вигляд; бот на grammY, чий /start відкриває Mini App; синхронізація прогресу через endpoint і базу tgcloud; навчання працює локально, коли бекенд недоступний або сторінку відкрито поза Telegram; озвучка поза цим етапом, тут лише шлях до неї.
 
 ## 1. Коротко
@@ -19,7 +21,7 @@
 - **Фронтенд хостить tgcloud.** `Telegram.WebApp.Serverless.call` шле запит на відносний шлях `/api/<name>` того самого хоста ([S4]), тож endpoint досяжний лише зі сторінки, яку віддає tgcloud. Копія на GitHub Pages відкладена.
 - **Від Shuboku беремо три чисті модулі імпортом:** `src/lib/scheduler.ts` (FSRS), `src/lib/telegram.ts` (вібрація, кнопка «Назад»), `src/lib/scroll.ts` (колесо миші в Telegram Desktop). Shuboku не змінюється; у корені додаються лише `bunfig.toml` (2 рядки) і новий workflow.
 - **Синхронізація:** один рядок JSON на користувача в таблиці `progress`, один endpoint `sync`, злиття «по ключу, новіший виграє», яке ніколи не стирає прогрес.
-- **Стартові слова:** 11 наборів, 162 картки, перші два набори прямо зі скриншоту оператора (займенники, `sein`), далі `haben`, привітання, числа, сім’я, їжа, речі, дієслова, кольори, прикметники.
+- **Стартові слова:** 13 наборів, 167 карток рівня шкільного початківця. Першими в каталозі йдуть два набори з аркуша оператора: «Особові займенники» (переклади дослівно) і «sein – бути» (картки-пропуски «wir … (sein)» → «wir sind»). Далі `haben`, привітання, числа, кольори, сім’я, школа, тварини, їжа, дім та іграшки, дієслова, прикметники.
 - **Стиль:** світлий «зошит у клітинку» з кольорами артиклів (der синій, die червоний, das зелений). Три варіанти опубліковано на рев’ю.
 - **Офлайн-збірка перевірена:** прототип у scratch-теці пройшов typecheck бота, `tgcloud-grammy build`, `vite build`, `tgcloud status` без логіна і без токена (§13).
 - **Оператор робить сам:** бот у BotFather, увімкнення Serverless, `npx tgcloud login`, перший `bun run deploy`, `npx tgcloud migrate`, кнопка меню в BotFather, за бажанням секрет `TGCLOUD_TOKEN` для CI (§11).
@@ -193,7 +195,7 @@ export const progress = table('progress', {
 5. Якщо рядка нема або `merged` відрізняється від `row.data`, записати (`insert … onConflictDoUpdate`).
 6. Повернути `{ progress: merged, serverTime: Date.now() }` (лише числа, без `Date`, бо `Date` приходить у Mini App як `{}` [S2]).
 
-Чому один JSON-рядок на користувача: 162 картки, найгірший випадок близько 280 KB (162 × 50 записів історії × ~30 байт + стани), і злиття живе в коді. Рядок на картку означав би пакетні записи під лімітом змінних SQLite ([S1]) і злиття в SQL.
+Чому один JSON-рядок на користувача: 167 карток, найгірший випадок близько 290 KB (167 × 50 записів історії × ~30 байт + стани), і злиття живе в коді. Рядок на картку означав би пакетні записи під лімітом змінних SQLite ([S1]) і злиття в SQL.
 
 Конкурентні виклики з двох пристроїв без транзакції можуть перезаписати один одного. Клієнт завжди шле повний стан і зливає відповідь зі своїм, тож наступна синхронізація відновлює втрачене: злиття сходиться за будь-якого порядку.
 
@@ -217,63 +219,82 @@ export const progress = table('progress', {
 
 ## 9. Стартовий список слів
 
+Рівень: шкільний початківець. Перші два набори оператор узяв зі шкільного аркуша (§0) і просив поставити їх окремими наборами, першими в каталозі; переклади займенників дослівно як на аркуші. Решта слів з тих самих перших шкільних уроків німецької: привітання, числа, кольори, сім’я, школа, тварини, їжа, дім, прості дієслова і прикметники. Слова дорослого побуту (квартира, ключ, кава, працювати, купувати) у список не входять.
+
 Модель (у `deutsch/web/data/words.ts`):
 
 ```ts
 export type Article = "der" | "die" | "das";
-export type Pos = "noun" | "verb" | "adj" | "pron" | "num" | "phrase";
+export type Pos = "noun" | "verb" | "adj" | "pron" | "num" | "phrase" | "form";
 export interface Word {
   id: string;              // "<packId>:<slug>", [a-z0-9-] після двокрапки; НЕЗМІННИЙ: прогрес прив’язаний до нього
-  de: string;              // без артикля: "Apfel", "ich bin", "Guten Morgen!"
-  uk: string;              // "яблуко"
+  de: string;              // без артикля: "Apfel", "Guten Morgen!"; для "form" повна форма: "wir sind"
+  uk: string;              // "яблуко"; займенники дослівно як на аркуші: "ви (група або клас)"
   pos: Pos;
-  article?: Article;       // обов’язковий для pos "noun", заборонений для інших
-  plural?: string | null;  // лише для іменників: форма множини без артикля; null = «зазвичай без множини»
-  hint?: string;           // показується на лицьовому боці в обох напрямках (розрізняє sie / sie / Sie)
-  note?: string;           // показується на звороті ("er isst", "-chen завжди das")
+  article?: Article;       // обов’язковий для "noun", заборонений для інших
+  plural?: string | null;  // лише "noun": множина без артикля; null = «зазвичай без множини»
+  cloze?: string;          // обов’язковий для "form" і лише там: німецький лицьовий бік з пропуском, "wir … (sein)"
+  deHint?: string;         // видно лише тоді, коли лицьовий бік німецький
+  ukHint?: string;         // видно лише тоді, коли лицьовий бік український
+  note?: string;           // на звороті: "er isst", "-chen завжди das"
 }
 export interface Pack { id: string; title: string; blurb: string; words: Word[] }
 ```
 
-Апостроф в українських словах: `’` (U+2019) скрізь. Набори `pronomen` і `sein` увімкнені за замовчуванням (`emptyProgress`), решту користувач додає сам.
+Як картка показується:
 
-**1. `pronomen` — «Особові займенники» (9, pos `pron`)** — зі скриншоту оператора
+| pos | `de-uk`: лицьовий бік → зворот | `uk-de`: лицьовий бік → зворот |
+|---|---|---|
+| `noun` | `der Apfel` (артикль кольором роду) → «яблуко», «мн.: die Äpfel» | «яблуко» + «der / die / das?» → `der Apfel`, множина |
+| `form` | `wir … (sein)` → `wir sind` (форма дієслова виділена) + «ми є» | «ми є» + `ukHint` «sein» → `wir sind` |
+| решта | `de` (+ `deHint`) → `uk` + `note` | `uk` (+ `ukHint`) → `de` + `note` |
 
-| id | de | uk | hint | note |
+Обидва напрямки для `form` тренують те саме: назвати форму дієслова. У `uk-de` іменник вимагає згадати рід, найважче в німецькій для початківця.
+
+Підказки розрізняють однакові лицьові боки. Кожна показується лише з того боку, де без неї картка двозначна, тож відповіді вона не видає. Так `sie` / `sie` / `Sie` розв’язні:
+
+- `de-uk`: «sie» + «sie ist …» → вона; «sie» + «sie sind …» → вони; «Sie» + «з великої літери: Sie sind …» → Ви (ввічлива форма);
+- `uk-de`: «вона», «вони», «Ви (ввічлива форма)», «ви (група або клас)» різні й без підказок.
+
+Апостроф в українських словах: `’` (U+2019) скрізь. Набори `pronomen` і `sein` увімкнені за замовчуванням (`emptyProgress`), решту користувач додає сам. Порядок у каталозі — як нижче.
+
+**1. `pronomen` — «Особові займенники» (9, pos `pron`)** — з аркуша оператора, `uk` дослівно
+
+| id | de | uk | deHint | note |
 |---|---|---|---|---|
-| pronomen:ich | ich | я | | |
-| pronomen:du | du | ти | | |
-| pronomen:er | er | він | | |
-| pronomen:sie-sg | sie | вона | однина | sie ist |
-| pronomen:es | es | воно | | |
-| pronomen:wir | wir | ми | | |
-| pronomen:ihr | ihr | ви | до кількох людей (група, клас) | |
-| pronomen:sie-pl | sie | вони | множина | sie sind |
-| pronomen:sie-formal | Sie | Ви | ввічлива форма | завжди з великої літери |
+| pronomen:ich | ich | я | | ich bin |
+| pronomen:du | du | ти | | du bist |
+| pronomen:er | er | він | | er ist |
+| pronomen:sie-sg | sie | вона | sie ist … | |
+| pronomen:es | es | воно | | es ist |
+| pronomen:wir | wir | ми | | wir sind |
+| pronomen:ihr | ihr | ви (група або клас) | | ihr seid |
+| pronomen:sie-pl | sie | вони | sie sind … | |
+| pronomen:sie-formal | Sie | Ви (ввічлива форма) | з великої літери: Sie sind … | завжди з великої літери |
 
-**2. `sein` — «sein — бути» (6, pos `phrase`)** — зі скриншоту оператора. Blurb: «Українською «є» часто пропускають: Ich bin Anna — Я Анна.»
+**2. `sein` — «sein – бути» (6, pos `form`)** — з аркуша оператора. Blurb: «Теперішній час. Українською «є» часто пропускають: Ich bin Anna — Я Анна.» `ukHint` у всіх карток: «sein».
 
-| id | de | uk | hint |
+| id | cloze | de | uk |
 |---|---|---|---|
-| sein:ich-bin | ich bin | я є | |
-| sein:du-bist | du bist | ти є | |
-| sein:er-ist | er/sie/es ist | він/вона/воно є | |
-| sein:wir-sind | wir sind | ми є | |
-| sein:ihr-seid | ihr seid | ви є | до кількох людей |
-| sein:sie-sind | sie/Sie sind | вони є / Ви є | |
+| sein:ich-bin | ich … (sein) | ich bin | я є |
+| sein:du-bist | du … (sein) | du bist | ти є |
+| sein:er-ist | er/sie/es … (sein) | er/sie/es ist | він/вона/воно є |
+| sein:wir-sind | wir … (sein) | wir sind | ми є |
+| sein:ihr-seid | ihr … (sein) | ihr seid | ви є (група або клас) |
+| sein:sie-sind | sie/Sie … (sein) | sie/Sie sind | вони є / Ви є |
 
-**3. `haben` — «haben — мати» (6, pos `phrase`)**
+**3. `haben` — «haben – мати» (6, pos `form`)**, той самий формат, `ukHint` «haben».
 
-| id | de | uk | hint |
+| id | cloze | de | uk |
 |---|---|---|---|
-| haben:ich-habe | ich habe | я маю | |
-| haben:du-hast | du hast | ти маєш | |
-| haben:er-hat | er/sie/es hat | він/вона/воно має | |
-| haben:wir-haben | wir haben | ми маємо | |
-| haben:ihr-habt | ihr habt | ви маєте | до кількох людей |
-| haben:sie-haben | sie/Sie haben | вони мають / Ви маєте | |
+| haben:ich-habe | ich … (haben) | ich habe | я маю |
+| haben:du-hast | du … (haben) | du hast | ти маєш |
+| haben:er-hat | er/sie/es … (haben) | er/sie/es hat | він/вона/воно має |
+| haben:wir-haben | wir … (haben) | wir haben | ми маємо |
+| haben:ihr-habt | ihr … (haben) | ihr habt | ви маєте (група або клас) |
+| haben:sie-haben | sie/Sie … (haben) | sie/Sie haben | вони мають / Ви маєте |
 
-**4. `hallo` — «Привітання та основи» (17, pos `phrase`)**
+**4. `hallo` — «Привітання» (18, pos `phrase`)**
 
 | id | de | uk | note |
 |---|---|---|---|
@@ -284,7 +305,6 @@ export interface Pack { id: string; title: string; blurb: string; words: Word[] 
 | hallo:gute-nacht | Gute Nacht! | На добраніч! | |
 | hallo:tschuess | Tschüss! | Бувай! | |
 | hallo:auf-wiedersehen | Auf Wiedersehen! | До побачення! | |
-| hallo:bis-morgen | Bis morgen! | До завтра! | |
 | hallo:danke | Danke! | Дякую! | |
 | hallo:bitte | Bitte! | Будь ласка! | ще й «прошу» у відповідь на «дякую» |
 | hallo:ja | ja | так | |
@@ -292,25 +312,29 @@ export interface Pack { id: string; title: string; blurb: string; words: Word[] 
 | hallo:entschuldigung | Entschuldigung! | Вибачте! | |
 | hallo:wie-gehts | Wie geht's? | Як справи? | |
 | hallo:gut-danke | Gut, danke. | Добре, дякую. | |
-| hallo:ich-heisse | Ich heiße … | Мене звати … | |
 | hallo:wie-heisst-du | Wie heißt du? | Як тебе звати? | |
+| hallo:ich-heisse | Ich heiße … | Мене звати … | |
+| hallo:wie-alt | Wie alt bist du? | Скільки тобі років? | |
+| hallo:ich-bin-jahre-alt | Ich bin … Jahre alt. | Мені … років. | |
 
 **5. `zahlen` — «Числа» (22, pos `num`)**: id `zahlen:<число>`, `uk` у формі «три (3)».
 
 null — нуль (0); eins — один (1); zwei — два (2); drei — три (3); vier — чотири (4); fünf — п’ять (5); sechs — шість (6); sieben — сім (7); acht — вісім (8); neun — дев’ять (9); zehn — десять (10); elf — одинадцять (11); zwölf — дванадцять (12); dreizehn — тринадцять (13); vierzehn — чотирнадцять (14); fünfzehn — п’ятнадцять (15); sechzehn — шістнадцять (16, note «sech-, без s»); siebzehn — сімнадцять (17, note «sieb-, без en»); achtzehn — вісімнадцять (18); neunzehn — дев’ятнадцять (19); zwanzig — двадцять (20); hundert — сто (100).
 
-**6. `familie` — «Сім’я та люди» (19, pos `noun`)**: id `familie:<slug>`, slug = `de` малими латинськими, умлаут → `ae/oe/ue`, `ß` → `ss`.
+**6. `farben` — «Кольори» (11, pos `adj`)**: rot — червоний; blau — синій; grün — зелений; gelb — жовтий; schwarz — чорний; weiß — білий; grau — сірий; braun — коричневий; orange — помаранчевий; rosa — рожевий; lila — фіолетовий.
+
+Іменники нижче: id `<packId>:<slug>`, slug = `de` малими латинськими, умлаут → `ae/oe/ue`, `ß` → `ss`; `plural: null` має note «зазвичай без множини».
+
+**7. `familie` — «Сім’я» (14, pos `noun`)**
 
 | de | article | plural | uk | note |
 |---|---|---|---|---|
 | Familie | die | Familien | сім’я | |
-| Mutter | die | Mütter | мама, мати | |
-| Vater | der | Väter | тато, батько | |
+| Mutter | die | Mütter | мама | |
+| Vater | der | Väter | тато | |
 | Bruder | der | Brüder | брат | |
 | Schwester | die | Schwestern | сестра | |
 | Kind | das | Kinder | дитина | |
-| Sohn | der | Söhne | син | |
-| Tochter | die | Töchter | донька | |
 | Oma | die | Omas | бабуся | |
 | Opa | der | Opas | дідусь | |
 | Mann | der | Männer | чоловік | |
@@ -319,11 +343,43 @@ null — нуль (0); eins — один (1); zwei — два (2); drei — тр
 | Mädchen | das | Mädchen | дівчинка | -chen завжди das |
 | Freund | der | Freunde | друг | |
 | Freundin | die | Freundinnen | подруга | |
-| Baby | das | Babys | немовля | |
+
+**8. `schule` — «Школа» (15, pos `noun`)**
+
+| de | article | plural | uk | note |
+|---|---|---|---|---|
+| Schule | die | Schulen | школа | |
+| Klasse | die | Klassen | клас | |
 | Lehrer | der | Lehrer | учитель | |
 | Lehrerin | die | Lehrerinnen | учителька | |
+| Buch | das | Bücher | книжка | |
+| Heft | das | Hefte | зошит | |
+| Bleistift | der | Bleistifte | олівець | |
+| Kuli | der | Kulis | ручка | скорочення від der Kugelschreiber |
+| Radiergummi | der | Radiergummis | гумка | |
+| Lineal | das | Lineale | лінійка | |
+| Schere | die | Scheren | ножиці | |
+| Schultasche | die | Schultaschen | портфель | |
+| Tafel | die | Tafeln | дошка | |
+| Tisch | der | Tische | стіл, парта | |
+| Stuhl | der | Stühle | стілець | |
 
-**7. `essen` — «Їжа та напої» (19, pos `noun`)**; `plural: null` має note «зазвичай без множини».
+**9. `tiere` — «Тварини» (10, pos `noun`)**
+
+| de | article | plural | uk |
+|---|---|---|---|
+| Hund | der | Hunde | собака |
+| Katze | die | Katzen | кішка |
+| Maus | die | Mäuse | миша |
+| Vogel | der | Vögel | птах |
+| Pferd | das | Pferde | кінь |
+| Fisch | der | Fische | риба |
+| Kuh | die | Kühe | корова |
+| Schwein | das | Schweine | свиня |
+| Hase | der | Hasen | заєць |
+| Bär | der | Bären | ведмідь |
+
+**10. `essen` — «Їжа та напої» (14, pos `noun`)**
 
 | de | article | plural | uk |
 |---|---|---|---|
@@ -332,7 +388,6 @@ null — нуль (0); eins — один (1); zwei — два (2); drei — тр
 | Milch | die | null | молоко |
 | Saft | der | Säfte | сік |
 | Tee | der | Tees | чай |
-| Kaffee | der | Kaffees | кава |
 | Apfel | der | Äpfel | яблуко |
 | Banane | die | Bananen | банан |
 | Orange | die | Orangen | апельсин |
@@ -340,40 +395,25 @@ null — нуль (0); eins — один (1); zwei — два (2); drei — тр
 | Tomate | die | Tomaten | помідор |
 | Ei | das | Eier | яйце |
 | Käse | der | null | сир |
-| Fleisch | das | null | м’ясо |
-| Fisch | der | Fische | риба |
-| Suppe | die | Suppen | суп |
 | Kuchen | der | Kuchen | пиріг |
-| Butter | die | null | вершкове масло |
-| Zucker | der | null | цукор |
+| Schokolade | die | Schokoladen | шоколад |
 
-**8. `dinge` — «Довкола нас» (21, pos `noun`)**
+**11. `haus` — «Дім та іграшки» (10, pos `noun`)**
 
 | de | article | plural | uk |
 |---|---|---|---|
 | Haus | das | Häuser | будинок, дім |
-| Wohnung | die | Wohnungen | квартира |
 | Zimmer | das | Zimmer | кімната |
 | Tür | die | Türen | двері |
 | Fenster | das | Fenster | вікно |
-| Tisch | der | Tische | стіл |
-| Stuhl | der | Stühle | стілець |
 | Bett | das | Betten | ліжко |
 | Lampe | die | Lampen | лампа |
-| Buch | das | Bücher | книжка |
-| Heft | das | Hefte | зошит |
-| Bleistift | der | Bleistifte | олівець |
-| Tasche | die | Taschen | сумка |
-| Schule | die | Schulen | школа |
-| Handy | das | Handys | мобільний телефон |
-| Schlüssel | der | Schlüssel | ключ |
-| Uhr | die | Uhren | годинник |
-| Auto | das | Autos | автомобіль |
+| Ball | der | Bälle | м’яч |
+| Spielzeug | das | Spielzeuge | іграшка |
 | Fahrrad | das | Fahrräder | велосипед |
-| Hund | der | Hunde | собака, пес |
-| Katze | die | Katzen | кішка, кіт |
+| Auto | das | Autos | машина, автомобіль |
 
-**9. `verben` — «Дієслова» (20, pos `verb`)**; `note` = форма 3-ї особи там, де вона неправильна.
+**12. `verben` — «Дієслова» (20, pos `verb`)**; `note` = форма 3-ї особи там, де вона неправильна.
 
 | de | uk | note |
 |---|---|---|
@@ -387,28 +427,20 @@ null — нуль (0); eins — один (1); zwei — два (2); drei — тр
 | lernen | учити, учитися | |
 | lesen | читати | er liest |
 | schreiben | писати | |
-| sprechen | говорити | er spricht |
+| malen | малювати | |
+| singen | співати | |
+| schwimmen | плавати | |
+| laufen | бігати | er läuft |
 | sehen | бачити | er sieht |
 | hören | слухати, чути | |
+| sprechen | говорити | er spricht |
 | wohnen | жити, мешкати | |
 | heißen | називатися | Ich heiße … — Мене звати … |
-| kaufen | купувати | |
-| arbeiten | працювати | er arbeitet |
-| fahren | їхати | er fährt |
-| mögen | любити, подобатися | er mag |
-| kochen | готувати (їжу) | |
+| mögen | любити | er mag |
 
-**10. `farben` — «Кольори» (11, pos `adj`)**: rot — червоний; blau — синій; grün — зелений; gelb — жовтий; schwarz — чорний; weiß — білий; grau — сірий; braun — коричневий; orange — помаранчевий; rosa — рожевий; lila — фіолетовий.
+**13. `adjektive` — «Які? Прикметники» (12, pos `adj`)**: groß — великий; klein — маленький; gut — добрий, хороший; schlecht — поганий; neu — новий; alt — старий; schön — гарний; lustig — веселий; traurig — сумний; kalt — холодний; warm — теплий; schnell — швидкий.
 
-**11. `adjektive` — «Які? Прикметники» (12, pos `adj`)**: groß — великий; klein — маленький; gut — хороший, добрий; schlecht — поганий; neu — новий; alt — старий; jung — молодий; schön — гарний; kalt — холодний; warm — теплий; schnell — швидкий; langsam — повільний.
-
-Разом: 9 + 6 + 6 + 17 + 22 + 19 + 19 + 21 + 20 + 11 + 12 = **162**.
-
-Як картка показується:
-
-- `de-uk`: лицьовий бік = артикль + слово (`der Apfel`, артикль у кольорі роду) або фраза; зворот = переклад, множина «мн.: die Äpfel», note.
-- `uk-de`: лицьовий бік = переклад + підказка «der / die / das?» для іменників; зворот = `der Apfel` і множина. Так тренується саме рід, найважче в німецькій для початківця.
-- `hint` видно на лицьовому боці в обох напрямках.
+Разом: 9 + 6 + 6 + 18 + 22 + 11 + 14 + 15 + 10 + 14 + 10 + 20 + 12 = **167** карток у 13 наборах.
 
 ## 10. Візуальний напрям
 
@@ -478,7 +510,7 @@ null — нуль (0); eins — один (1); zwei — два (2); drei — тр
 
 1. Скрипт `deutsch/scripts/generate-audio.ts` за зразком `~/Projects/svit-u-kysheni/scripts/generate-audio.ts`: `POST https://tts-rt.soniox.com/tts` з тілом `{ model: "tts-rt-v2", language: "de", voice: "Annika", audio_format: "mp3", text }`; ключ читається з `~/.config/agent-log-viewer/soniox-api-key` під час запуску, ніде не друкується і не комітиться; на 429 чекати (ліміт близько 100 запитів на хвилину, з пам’яті проєкту).
 2. Текст: для іменників артикль + слово («der Apfel»), для решти `de`; для «er/sie/es ist» читати першу форму або додати поле `speak`.
-3. Файли: `deutsch/public/audio/<id з двокрапкою, заміненою на ->.mp3`, приблизно 162 × 17 KB ≈ 2.8 MB (оцінка за «Світ у кишені»: 204 кліпи = 3.5 MB). Vite копіює їх у `dist/`, `push` вивантажує лише змінені файли ([S1]). Якщо ліміти статики tgcloud (не опубліковані) завадять, запасний шлях як у Shuboku: jsDelivr з git-тегу.
+3. Файли: `deutsch/public/audio/<id з двокрапкою, заміненою на ->.mp3`, приблизно 167 × 17 KB ≈ 2.8 MB (оцінка за «Світ у кишені»: 204 кліпи = 3.5 MB). Vite копіює їх у `dist/`, `push` вивантажує лише змінені файли ([S1]). Якщо ліміти статики tgcloud (не опубліковані) завадять, запасний шлях як у Shuboku: jsDelivr з git-тегу.
 4. Відтворення: `new Audio(url)`; запасний варіант `speechSynthesis` з голосом `de-DE`, де він є (у Telegram Desktop на WebKitGTK його немає, README Shuboku).
 5. Перевірка вимови: транскрипція Whisper і порівняння з текстом, як `scripts/verify-audio.py` у Shuboku.
 
@@ -530,12 +562,14 @@ null — нуль (0); eins — один (1); zwei — два (2); drei — тр
 | Кілька профілів на пристрої, власні колоди, експорт/імпорт JSON | профіль = акаунт Telegram; синхронізація закриває перенос між пристроями | як у Shuboku |
 | Нагадування від бота «пора повторити» | на платформі немає cron | коли з’явиться планувальник |
 | CloudStorage Telegram | його замінює база tgcloud | — |
-| Рядок у базі на кожну картку | при 162 картках вистачає одного JSON-рядка | якщо знадобиться аналітика на сервері |
+| Рядок у базі на кожну картку | при 167 картках вистачає одного JSON-рядка | якщо знадобиться аналітика на сервері |
 | Темна тема для варіанта 1 | не вимагалася | токени варіанта 2 як `prefers-color-scheme: dark` |
 
-Перевірка дизайну проти вихідної вимоги: Telegram Serverless через `@aiogram/tgcloud-grammy` використано для бота, бекенду, бази і хостингу (так); «полностью здесь» і «второе приложение» — `deutsch/` у цьому репозиторії (так); вивчається німецька (так); «немножко другой стиль» — варіант «Heft» (так); «самые базовые слова» — 162 картки A1, перші набори зі скриншоту оператора (так); озвучка «если получится», «для начала просто слова» — шлях описано, у збірку не входить (так); «если всё окей, можно делать сразу» — дизайн придатний до збірки, бриф нижче.
+Перевірка дизайну проти вихідної вимоги: Telegram Serverless через `@aiogram/tgcloud-grammy` використано для бота, бекенду, бази і хостингу (так); «полностью здесь» і «второе приложение» — `deutsch/` у цьому репозиторії (так); вивчається німецька (так); «немножко другой стиль» — варіант «Heft» (так); «самые базовые слова» і «вот такие слова» — 167 карток рівня шкільного початківця, перші два набори з аркуша оператора окремими наборами, переклади займенників дослівно, sie / sie / Sie розв’язні (так); озвучка «если получится», «для начала просто слова» — шлях описано, у збірку не входить (так); «если всё окей, можно делать сразу» — дизайн придатний до збірки, бриф нижче.
 
 ## 16. Бриф для білдера
+
+> **Стан збірки клієнта (етап frontend, 2026-10-11).** Зроблено: `bunfig.toml`, `deutsch/` (Vite, React, `web/`, `shared/`), 167 карток у 13 наборах, стиль «Heft», тести, `.github/workflows/deutsch.yml` без кроку деплою, розділ у кореневому `README.md`. Свідомо не зроблено, лишається наступному етапу: `bot/`, `tgcloud.jsonc`, залежності `@aiogram/tgcloud-grammy`, `@tgcloud/cli`, `grammy`, скрипти `status`/`deploy`, крок деплою в workflow, `web/lib/tg.ts::callEndpoint`. Шов для сервера: `deutsch/web/lib/sync.ts` (`SyncTransport`, `localOnlyTransport`), підключається одним рядком у `deutsch/web/App.tsx`. Тому `build` у `deutsch/package.json` зараз `tsc -p tsconfig.json && vite build`. Пункти нижче про `bot/` і `tgcloud-grammy build` ще не виконані.
 
 ### Файли
 
@@ -649,14 +683,14 @@ null — нуль (0); eins — один (1); zwei — два (2); drei — тр
 - `index.html`: `lang="uk"`, `theme-color` `#f4f0e6`, `<script src="https://telegram.org/js/telegram-web-app.js">`, заголовок «Wortschatz — німецькі картки», `<script type="module" src="/web/main.tsx">`.
 - `README.md` (українською): що це, `bun install` у корені і в `deutsch/`, `bun run dev|test|build|preview`, кроки деплою з §11, перелік команд tgcloud, які потребують токена.
 - `shared/progress.ts` + `shared/progress.test.ts`: §7.
-- `web/data/words.ts` + `web/data/words.test.ts`: §9, рівно ці 162 картки.
+- `web/data/words.ts` + `web/data/words.test.ts`: §9, рівно ці 167 карток у 13 наборах, у тому самому порядку; `pronomen` і `sein` перші.
 - `web/lib/queue.ts` + тест: `buildQueue(progress, packs, now, limit = 20, random)`: спершу картки до повторення (`isDue` з планувальника) з увімкнених наборів у випадковому порядку, потім нові в порядку наборів, разом не більше `limit`. Картку з «Не згадав» один раз повернути в кінець сесії; друга оцінка теж іде в FSRS.
 - `web/lib/format.ts` + тест: інтервал українською з правильною множиною (`Intl.PluralRules("uk")`): «скоро», «завтра», «2 дні», «5 днів», «3 тижні»; число для лічильників («1 картка», «2 картки», «5 карток»).
 - `web/lib/tg.ts`: ініціалізація (`ready`, `expand`, `setHeaderColor`/`setBackgroundColor` у колір фону, `disableVerticalSwipes` лише на iOS/Android), `inTelegram()` (є `initData`), `callEndpoint` (§7). Імпортує `haptics`, `setTelegramBack`, `setClosingConfirmation`, `isTelegram` з `../../src/lib/telegram`.
 - `web/lib/sync.ts` + тест: §7, з підставним `call`.
 - `web/main.tsx`, `web/App.tsx`, `web/styles.css`, `web/screens/Home.tsx`, `web/screens/Study.tsx`:
   - головний екран: назва, лічильники «N до повторення · M нових», головна кнопка «Почати» (неактивна з текстом «На сьогодні все», коли черга порожня), «Мої набори» з прогресом (оцінені / всього) і кнопкою «Прибрати», «Додати набір» з кнопкою «Додати», перемикач напрямку «Німецька → українська» / «Українська → німецька», рядок статусу синхронізації;
-  - навчання: прогрес «7 / 20», картка (§9), відкриття тапом, пробілом або Enter, 4 кнопки з прогнозом інтервалу (`review(state ?? newCardState(now), g, now)` без збереження): «Не згадав» → оцінка 1, «Важко» → 3, «Добре» → 4, «Легко» → 5; клавіші 1–4; вібрація; кнопка «Назад» Telegram виходить із сесії; підтвердження закриття під час сесії;
+  - навчання: прогрес «7 / 20», картка за таблицею показу з §9 (іменник, `form` з пропуском, решта; `deHint`/`ukHint` лише з потрібного боку), відкриття тапом, пробілом або Enter, 4 кнопки з прогнозом інтервалу (`review(state ?? newCardState(now), g, now)` без збереження): «Не згадав» → оцінка 1, «Важко» → 3, «Добре» → 4, «Легко» → 5; клавіші 1–4; вібрація; кнопка «Назад» Telegram виходить із сесії; підтвердження закриття під час сесії;
   - кінець сесії: «Готово: N карток», коли наступне повторення, кнопка на головну;
   - стиль варіанта 1 (§10), якщо `read_prototype_review` не покаже іншого вибору оператора.
 - `bot/schema.ts`, `bot/endpoints/sync.ts`: §7. `bot/lib/bot.ts`, `bot/handlers/message.ts`: §8.
@@ -666,7 +700,7 @@ null — нуль (0); eins — один (1); zwei — два (2); drei — тр
 1. Корінь, після `bun install --frozen-lockfile`: `bun test` → 86 тестів у 9 файлах, 0 падінь (тести `deutsch/` не підхоплюються); `bun run build` → OK.
 2. `git diff --stat main -- src index.html vite.config.ts package.json bun.lock tsconfig.json .gitignore .github/workflows/deploy.yml audio scripts reference ALGORITHM.md BRIEF.md docs/simulations` порожній.
 3. `cd deutsch && bun install --frozen-lockfile && bun test` → усе зелене, зокрема:
-   - слова: 162 картки, 11 наборів, id унікальні й відповідають `^<packId>:[a-z0-9-]+$`, у кожного `noun` є `article` і `plural !== undefined`, у не-іменників `article` відсутній, `de`/`uk` непорожні й без пробілів по краях, пари (лицьовий текст, `hint`) унікальні в кожному напрямку;
+   - слова: 167 карток, 13 наборів, перші `pronomen` і `sein`; id унікальні й відповідають `^<packId>:[a-z0-9-]+$`; у кожного `noun` є `article` і `plural !== undefined`, у не-іменників `article` і `plural` відсутні; у кожного `form` є `cloze` з «…» і назвою дієслова в дужках, і `de` починається з частини `cloze` до «…»; `cloze` є лише в `form`; `de`/`uk` непорожні й без пробілів по краях; лицьовий бік з підказкою унікальний у кожному напрямку (`de-uk`: `cloze` або артикль + `de`, плюс `deHint`; `uk-de`: `uk` плюс `ukHint`); `uk` займенників дорівнює рядкам з аркуша («я», «ти», «він», «вона», «воно», «ми», «ви (група або клас)», «вони», «Ви (ввічлива форма)»);
    - злиття: комутативність, ідемпотентність, асоціативність на згенерованих випадках; `merge(повний, emptyProgress())` = повний; новіший стан картки виграє за `history`, включно з оцінкою 6; `parseProgress` відкидає биті записи і повертає `null` на не-об’єкт;
    - черга: спершу due, потім нові, ліміт, «Не згадав» повертається один раз;
    - формат: «1 день», «2 дні», «5 днів», «21 день», «завтра»;

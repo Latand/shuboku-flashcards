@@ -1,0 +1,36 @@
+name: Wortschatz
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - "deutsch/**"
+      - "src/lib/scheduler.ts"
+      - "src/lib/telegram.ts"
+      - "src/lib/scroll.ts"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/deutsch.yml"
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # root install: ts-fsrs for src/lib/scheduler.ts, which Wortschatz imports
+      - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
+        working-directory: deutsch
+      - run: bun test
+        working-directory: deutsch
+      - run: bun run build
+        working-directory: deutsch
