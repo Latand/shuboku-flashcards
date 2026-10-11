@@ -130,7 +130,7 @@ function PackRow({
             <span style={{ width: `${(done / total) * 100}%` }} />
           </span>
           <span className="pack-count">
-            {done} / {total} · {cardsLabel(total)}
+            {done} / {cardsLabel(total)}
           </span>
         </div>
       </div>

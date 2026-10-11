@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { cardsLabel, daysLabel, formatInterval, plural } from "./format";
+import { cardsLabel, daysLabel, formatInterval, plural, splitClarifier } from "./format";
 
 describe("plural forms", () => {
   test("days", () => {
@@ -44,5 +44,17 @@ describe("formatInterval", () => {
 
   test("garbage input reads as soon", () => {
     expect(formatInterval(NaN)).toBe("скоро");
+  });
+});
+
+describe("clarifier split", () => {
+  test("separates a trailing parenthesis", () => {
+    expect(splitClarifier("ви (група або клас)")).toEqual({ main: "ви", clarifier: "(група або клас)" });
+    expect(splitClarifier("один (1)")).toEqual({ main: "один", clarifier: "(1)" });
+  });
+
+  test("leaves plain text alone", () => {
+    expect(splitClarifier("вони є / Ви є")).toEqual({ main: "вони є / Ви є" });
+    expect(splitClarifier("Привіт!")).toEqual({ main: "Привіт!" });
   });
 });

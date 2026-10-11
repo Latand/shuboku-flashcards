@@ -327,17 +327,18 @@ p {
   border-left-color: var(--das);
 }
 
+/* In flow, so the headword can never sit under it. */
 .gender {
-  position: absolute;
-  top: 10px;
-  right: 14px;
+  align-self: flex-end;
+  margin: -14px -6px 10px 0;
   font: 600 0.78rem var(--mono);
   color: var(--muted);
 }
 
+/* The article and noun share a line, so the size shrinks with the viewport before it can wrap. */
 .front,
 .back {
-  font: 700 2.4rem/1.15 var(--word);
+  font: 700 min(2.4rem, 8vw) / 1.15 var(--word);
 }
 
 .uk-front,
@@ -357,6 +358,14 @@ p {
 .clue {
   color: var(--muted);
   font-size: 1rem;
+  font-weight: 400;
+}
+
+.uk-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .de-clue {

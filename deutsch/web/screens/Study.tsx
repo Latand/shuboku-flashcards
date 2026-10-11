@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { newCardState, review, type Grade } from "../../../src/lib/scheduler";
 import type { Progress } from "../../shared/progress";
 import { PACKS, WORD_BY_ID, type Article, type Word } from "../data/words";
-import { cardsLabel, formatInterval } from "../lib/format";
+import { cardsLabel, formatInterval, splitClarifier } from "../lib/format";
 import { nextReviewInDays, requeueOnMiss } from "../lib/queue";
 import { haptics, setClosingConfirmation, setTelegramBack } from "../lib/tg";
 
@@ -15,7 +15,7 @@ const CHOICES: { grade: Choice; label: string; tone: string }[] = [
   { grade: 5, label: "Легко", tone: "easy" },
 ];
 
-const GENDER: Record<Article, string> = { der: "чоловічий", die: "жіночий", das: "середній" };
+const GENDER: Record<Article, string> = { der: "чоловічий рід", die: "жіночий рід", das: "середній рід" };
 
 interface StudyProps {
   queue: string[];
@@ -150,7 +150,8 @@ function German({ word }: { word: Word }) {
     <span className="de">
       {word.article && (
         <>
-          <Art article={word.article} />{" "}
+          <Art article={word.article} />
+          {"\u00a0"}
         </>
       )}
       {word.de}
@@ -183,6 +184,13 @@ function Card({
   const isForm = word.pos === "form";
   // On a German front the article is part of what is shown; on a Ukrainian front it is what to guess.
   const genderShown = word.article && (!toGerman || revealed);
+  const { main: ukMain, clarifier: ukClarifier } = splitClarifier(word.uk);
+  const ukText = (
+    <>
+      <span className="uk-back">{ukMain}</span>
+      {ukClarifier && <span className="clue">{ukClarifier}</span>}
+    </>
+  );
   const germanBack = isForm ? <Form word={word} /> : <German word={word} />;
 
   return (
@@ -192,14 +200,13 @@ function Card({
       onClick={revealed ? undefined : onReveal}
     >
       {genderShown && word.article && (
-        <p className="gender">
-          {word.article} · {GENDER[word.article]}
-        </p>
+        <p className="gender">{GENDER[word.article]}</p>
       )}
 
       {toGerman ? (
         <>
-          <p className="front uk-front">{word.uk}</p>
+          <p className="front uk-front">{ukMain}</p>
+          {ukClarifier && <p className="clue">{ukClarifier}</p>}
           {word.ukHint && <p className="clue">{word.ukHint}</p>}
           {word.article && !revealed && <p className="clue">der / die / das?</p>}
         </>
@@ -216,8 +223,8 @@ function Card({
             <p className="back">{germanBack}</p>
           ) : (
             <>
-              <p className="back">{isForm ? germanBack : <span className="uk-back">{word.uk}</span>}</p>
-              {isForm && <p className="uk-back">{word.uk}</p>}
+              {isForm ? <p className="back">{germanBack}</p> : <p className="back uk-block">{ukText}</p>}
+              {isForm && <p className="uk-block">{ukText}</p>}
             </>
           )}
           {word.pos === "noun" &&
@@ -241,7 +248,7 @@ function Done({ count, progress, onExit }: { count: number; progress: Progress; 
     <main className="page done">
       <section className="panel done-card">
         <h1 className="title">Готово!</h1>
-        <p className="done-count">Готово: {cardsLabel(count)}</p>
+        <p className="done-count">Повторено {cardsLabel(count)}</p>
         <p className="muted">
           {next === null ? "Наступних повторень поки немає." : `Наступне повторення: ${formatInterval(next)}.`}
         </p>

@@ -25,3 +25,9 @@ export function formatInterval(days: number): string {
   if (d < 365) return monthsLabel(Math.round(d / 30));
   return yearsLabel(Math.round(d / 365));
 }
+
+/** "ви (група або клас)" → the word and its clarification, so the card can set them apart. */
+export function splitClarifier(uk: string): { main: string; clarifier?: string } {
+  const m = /^(.+?)\s*(\([^()]+\))$/.exec(uk);
+  return m ? { main: m[1]!, clarifier: m[2]! } : { main: uk };
+}
